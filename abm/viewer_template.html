@@ -80,10 +80,10 @@
       background: transparent;
     }
     .section-divider {
-      margin: 12px 0 6px;
+      margin: 6px 0 2px;
     }
     h2 {
-      margin: 0 0 6px;
+      margin: 0 0 2px;
       font-size: 11px;
       text-transform: none;
       letter-spacing: 0;
@@ -206,7 +206,7 @@
       display: grid;
       grid-template-columns: repeat(7, minmax(0, 1fr));
       gap: 2px;
-      margin-top: 6px;
+      margin-top: 2px;
     }
     .metrics-tab {
       border: 0;
@@ -238,7 +238,7 @@
       position: relative;
       width: 100%;
       height: 132px;
-      margin-top: 4px;
+      margin-top: 1px;
     }
     .metrics-chart-pane {
       position: absolute;
@@ -267,50 +267,6 @@
       height: 100%;
       display: block;
       background: transparent;
-    }
-    .metrics-chart-value {
-      flex: 0 0 auto;
-      font-size: 11px;
-      font-weight: 500;
-      color: #3b2412;
-      font-variant-numeric: tabular-nums;
-      text-align: center;
-      line-height: 1.2;
-    }
-    .attendance-wrap {
-      position: relative;
-      height: 170px;
-      border: 0;
-      border-top: 1px solid rgba(74, 43, 20, 0.12);
-      border-bottom: 1px solid rgba(74, 43, 20, 0.12);
-      border-radius: 0;
-      background: transparent;
-      overflow: hidden;
-      margin-top: 8px;
-    }
-    #attendanceCanvas {
-      width: 100%;
-      height: 100%;
-      background: transparent;
-    }
-    .attendance-legend {
-      display: flex;
-      gap: 16px;
-      justify-content: center;
-      margin-top: 6px;
-      font-size: 9px;
-      color: rgba(74, 43, 20, 0.68);
-    }
-    .attendance-legend span {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-    .attendance-legend .swatch {
-      display: inline-block;
-      width: 10px;
-      height: 10px;
-      border-radius: 2px;
     }
     .network-summary {
       display: grid;
@@ -484,20 +440,9 @@
       <div id="tooltip" class="tooltip"></div>
     </main>
     <aside class="right-panel">
-      <h1>Dynamics Monitor</h1>
-      <canvas class="section-divider" aria-hidden="true"></canvas>
       <h2 id="metricsHeading">Average Metrics</h2>
       <div class="metrics-tabs" id="metricsTabs"></div>
       <div class="metrics-stage" id="metricsStage"></div>
-      <canvas class="section-divider" aria-hidden="true"></canvas>
-      <h2>Course Attendance</h2>
-      <div class="attendance-wrap">
-        <canvas id="attendanceCanvas"></canvas>
-      </div>
-      <div class="attendance-legend">
-        <span><span class="swatch" style="background:#6a9cc4"></span> Enrolled</span>
-        <span><span class="swatch" style="background:#c4905c"></span> Attended</span>
-      </div>
       <canvas class="section-divider" aria-hidden="true"></canvas>
       <h2>Social Network</h2>
       <div class="network-summary" id="networkSummary"></div>
@@ -556,8 +501,6 @@
     const ctx = canvas.getContext("2d");
     const socialCanvas = document.getElementById("socialNetworkCanvas");
     const socialCtx = socialCanvas.getContext("2d");
-    const attendanceCanvas = document.getElementById("attendanceCanvas");
-    const attendanceCtx = attendanceCanvas.getContext("2d");
     const tooltip = document.getElementById("tooltip");
     const appRoot = document.querySelector(".app");
     const leftPanel = document.querySelector(".left-panel");
@@ -600,21 +543,13 @@
       { key: "mental_health", label: "ment." },
       { key: "wellbeing", label: "wellbeing" },
     ];
-    const COURSE_SLOT_LABELS = [
-      { start: "08:00", end: "09:35" },
-      { start: "09:50", end: "11:25" },
-      { start: "14:00", end: "15:35" },
-      { start: "15:50", end: "17:25" },
-      { start: "19:00", end: "20:35" },
-    ];
     let metricsHistory = [];
-    let metricsShowAll = false;
-    let metricsTimeWindow = 600_000;
-    let metricsTargetWindow = 600_000;
-    let metricsAnimFrame = null;
     let activeMetricKey = "energy";
-    const METRICS_DEFAULT_WINDOW = 600_000;
-    const METRICS_ANIM_DURATION = 500;
+    let metricsViewMode = "hourly";
+    const METRICS_BUCKET_MODES = {
+      hourly: { label: "Hourly", unit: "h", bucketSeconds: 3600, limit: 12 },
+      daily: { label: "Daily", unit: "d", bucketSeconds: 86400, limit: 12 },
+    };
 
     async function fetchJson(url, options = {}) {
       const controller = new AbortController();
@@ -720,18 +655,56 @@
       return normalized;
     }
 
-    function metricsHistorySpanMs() {
-      if (metricsHistory.length < 2) return 0;
-      const first = metricsHistory[0];
-      const last = metricsHistory[metricsHistory.length - 1];
-      return Math.max(0, Number(last.t) - Number(first.t));
+    function aggregateMetricsHistory(modeKey, currentElapsed) {
+      const mode = METRICS_BUCKET_MODES[modeKey] || METRICS_BUCKET_MODES.hourly;
+      const buckets = new Map();
+      for (const sample of metricsHistory) {
+        const elapsed = Number(sample.elapsed_seconds);
+        if (!Number.isFinite(elapsed)) continue;
+        const bucketIndex = Math.floor(elapsed / mode.bucketSeconds);
+        if (!buckets.has(bucketIndex)) {
+          const bucketStart = bucketIndex * mode.bucketSeconds;
+          const bucket = {
+            bucketIndex,
+            elapsed_seconds: bucketStart,
+            t: bucketStart * 1000,
+            count: 0,
+            step: sample.step,
+          };
+          for (const def of AVERAGE_METRIC_DEFS) bucket[def.key] = 0;
+          buckets.set(bucketIndex, bucket);
+        }
+        const bucket = buckets.get(bucketIndex);
+        bucket.count += 1;
+        bucket.step = sample.step;
+        for (const def of AVERAGE_METRIC_DEFS) {
+          bucket[def.key] += clamp01(Number(sample[def.key]) || 0);
+        }
+      }
+      var aggregated = Array.from(buckets.values()).sort(function(a, b) {
+        return a.bucketIndex - b.bucketIndex;
+      });
+      for (const bucket of aggregated) {
+        for (const def of AVERAGE_METRIC_DEFS) {
+          bucket[def.key] = bucket.count > 0 ? bucket[def.key] / bucket.count : 0;
+        }
+      }
+      // Exclude the current incomplete bucket (the hour/day still in progress)
+      if (Number.isFinite(currentElapsed) && aggregated.length > 0) {
+        var currentBucket = Math.floor(currentElapsed / mode.bucketSeconds);
+        if (aggregated[aggregated.length - 1].bucketIndex === currentBucket) {
+          aggregated.pop();
+        }
+      }
+      // Return up to limit+1 buckets: when there are more than limit completed
+      // buckets, the extra one acts as a lead-in so the leftmost column can show
+      // the line continuing from off-screen data.
+      var needLeadIn = aggregated.length > mode.limit;
+      return aggregated.slice(needLeadIn ? -(mode.limit + 1) : -mode.limit);
     }
 
     async function init() {
-      metricsShowAll = false;
-      metricsTimeWindow = METRICS_DEFAULT_WINDOW;
-      metricsTargetWindow = METRICS_DEFAULT_WINDOW;
-      if (metricsAnimFrame) { cancelAnimationFrame(metricsAnimFrame); metricsAnimFrame = null; }
+      metricsViewMode = "hourly";
       summary = await fetchJson("/api/summary");
       sim = await fetchJson("/api/state");
       const metricsSnapshot = await fetchJson("/api/metrics_history");
@@ -799,10 +772,7 @@
           agentPathCache.clear();
           agentPathKeyCache.clear();
           metricsHistory = [];
-          metricsShowAll = false;
-          metricsTimeWindow = METRICS_DEFAULT_WINDOW;
-          metricsTargetWindow = METRICS_DEFAULT_WINDOW;
-          if (metricsAnimFrame) { cancelAnimationFrame(metricsAnimFrame); metricsAnimFrame = null; }
+          metricsViewMode = "hourly";
         }
         simReceivedAt = performance.now();
         updateAgentPathCache(nextSim);
@@ -1504,10 +1474,6 @@
       socialCanvas.width = Math.max(1, Math.floor(networkRect.width * dpr));
       socialCanvas.height = Math.max(1, Math.floor(networkRect.height * dpr));
       socialCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const attendanceRect = elementLayoutSize(attendanceCanvas);
-      attendanceCanvas.width = Math.max(1, Math.floor(attendanceRect.width * dpr));
-      attendanceCanvas.height = Math.max(1, Math.floor(attendanceRect.height * dpr));
-      attendanceCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
       if (!resize.didFit && summary) {
         const worldW = summary.size.cols * CELL;
         const worldH = summary.size.rows * CELL;
@@ -1522,7 +1488,7 @@
       draw();
       drawSocialNetwork();
       renderAverageMetrics();
-      drawCourseAttendance();
+
     }
 
     function drawTitleUnderline() {
@@ -1621,7 +1587,7 @@
       const selected = selectedId ? findAgent(selectedId) : null;
       updateSubmapControls();
       renderAverageMetrics();
-      drawCourseAttendance();
+
       renderNetworkSummary();
       drawSocialNetwork();
     }
@@ -1664,11 +1630,10 @@
           if (!btn) return;
           selectMetric(btn.dataset.metric);
         });
-        // Bind toggle click on the section heading
         var heading = document.getElementById("metricsHeading");
         if (heading) {
           heading.style.cursor = "pointer";
-          heading.title = "Click to toggle between 10min and all-time view";
+          heading.title = "Click to toggle between hourly and daily averages";
           heading.addEventListener("click", toggleMetricsView);
         }
       }
@@ -1677,7 +1642,6 @@
         stageEl.innerHTML = AVERAGE_METRIC_DEFS.map(function(def) {
           return '<div class="metrics-chart-pane" data-metric="' + def.key + '">' +
             '<div class="chart-area"><canvas data-metric="' + def.key + '"></canvas></div>' +
-            '<span class="metrics-chart-value" id="mval-' + def.key + '">0.000</span>' +
           '</div>';
         }).join("");
       }
@@ -1694,13 +1658,9 @@
       // Update heading text to reflect current mode
       updateMetricsHeading();
       if (!sim) return;
-      // Update the value label and chart for the active metric
+      // Update the chart for the active metric
       var activeDef = AVERAGE_METRIC_DEFS.find(function(d) { return d.key === activeMetricKey; })
         || AVERAGE_METRIC_DEFS[0];
-      var metrics = sim.average_metrics || {};
-      var val = clamp01(Number(metrics[activeDef.key]) || 0);
-      var valEl = document.getElementById("mval-" + activeDef.key);
-      if (valEl) valEl.textContent = val.toFixed(3);
       var canvas = stageEl.querySelector('canvas[data-metric="' + activeDef.key + '"]');
       if (canvas) drawMetricChart(canvas, activeDef.key, !!activeDef.warning);
     }
@@ -1715,210 +1675,167 @@
     function updateMetricsHeading() {
       var heading = document.getElementById("metricsHeading");
       if (!heading) return;
-      if (metricsShowAll) {
-        var total = Math.round(metricsHistorySpanMs() / 1000);
-        heading.textContent = "Average Metrics (All - " + total + "s)";
-      } else {
-        heading.textContent = "Average Metrics (10min)";
+      var mode = METRICS_BUCKET_MODES[metricsViewMode] || METRICS_BUCKET_MODES.hourly;
+      var currentElapsed = sim ? sim.elapsed_seconds : undefined;
+      var visible = aggregateMetricsHistory(metricsViewMode, currentElapsed);
+      var hasLeadIn = visible.length > mode.limit;
+      var shown = visible.slice(hasLeadIn ? 1 : 0);
+      if (!shown.length) {
+        heading.textContent = "Average Metrics (0" + mode.unit + ")";
+        return;
       }
+      var firstLabel = (shown[0].bucketIndex + 1) + mode.unit;
+      var lastLabel = (shown[shown.length - 1].bucketIndex + 1) + mode.unit;
+      heading.textContent = "Average Metrics (" + (shown.length === 1 ? firstLabel : firstLabel + "-" + lastLabel) + ")";
     }
 
     function toggleMetricsView() {
-      metricsShowAll = !metricsShowAll;
-      if (metricsShowAll) {
-        // Expand to show all data: target window = total elapsed time
-        var totalMs = metricsHistorySpanMs();
-        metricsTargetWindow = Math.max(totalMs + 5000, METRICS_DEFAULT_WINDOW);
-      } else {
-        // Back to 10-minute default
-        metricsTargetWindow = METRICS_DEFAULT_WINDOW;
-      }
-      startMetricsAnim();
-    }
-
-    function startMetricsAnim() {
-      if (metricsAnimFrame) cancelAnimationFrame(metricsAnimFrame);
-      function step() {
-        var diff = metricsTargetWindow - metricsTimeWindow;
-        if (Math.abs(diff) < 100) {
-          metricsTimeWindow = metricsTargetWindow;
-          metricsAnimFrame = null;
-          renderAverageMetrics();
-          return;
-        }
-        // Ease-out: move 22% closer each frame for a smooth 500ms transition.
-        metricsTimeWindow += diff * 0.22;
-        renderAverageMetrics();
-        metricsAnimFrame = requestAnimationFrame(step);
-      }
-      metricsAnimFrame = requestAnimationFrame(step);
+      metricsViewMode = metricsViewMode === "hourly" ? "daily" : "hourly";
+      renderAverageMetrics();
     }
 
     function visibleMetrics() {
       if (!metricsHistory.length) return [];
-      var now = metricsHistory.length ? Number(metricsHistory[metricsHistory.length - 1].t) : 0;
-      if (metricsShowAll) {
-        return metricsHistory;
-      }
-      var cutoff = now - metricsTimeWindow;
-      var result = [];
-      for (var i = 0; i < metricsHistory.length; i++) {
-        if (metricsHistory[i].t >= cutoff) result.push(metricsHistory[i]);
-      }
-      // Always include at least the last 2 points so the chart is never empty
-      if (result.length < 2 && metricsHistory.length >= 2) {
-        result = metricsHistory.slice(-2);
-      }
-      return result;
+      var currentElapsed = sim ? sim.elapsed_seconds : undefined;
+      return aggregateMetricsHistory(metricsViewMode, currentElapsed);
     }
 
     function drawMetricChart(canvas, metricKey, isWarning) {
       var wrap = canvas.parentElement;
-      var dpr = window.devicePixelRatio || 1;
       var cssW = wrap.offsetWidth;
       var cssH = wrap.offsetHeight;
       if (!cssW || !cssH) return;
-      var bufW = Math.max(1, Math.floor(cssW * dpr));
-      var bufH = Math.max(1, Math.floor(cssH * dpr));
+
+      var visible = visibleMetrics();
+
+      var dpr = window.devicePixelRatio || 1;
+      // Supersample at 1.5x for sharper text (same approach as agent name layer)
+      var supersample = 1.5;
+      var bufW = Math.max(1, Math.round(cssW * dpr * supersample));
+      var bufH = Math.max(1, Math.round(cssH * dpr * supersample));
       if (canvas.width !== bufW || canvas.height !== bufH) {
         canvas.width = bufW;
         canvas.height = bufH;
       }
       var ctx = canvas.getContext("2d");
-      var w = canvas.width;
-      var h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.save();
-      ctx.scale(dpr, dpr);
+      ctx.scale(dpr * supersample, dpr * supersample);
 
-      var pad = { top: 3, bottom: 3, left: 2, right: 2 };
+      var isHourly = metricsViewMode === "hourly";
+      var NUM_COLS = 12;
+      var pad = { top: 20, bottom: 22, left: 6, right: 6 };
       var plotW = cssW - pad.left - pad.right;
       var plotH = cssH - pad.top - pad.bottom;
       if (plotW <= 0 || plotH <= 0) { ctx.restore(); return; }
+      var colW = plotW / NUM_COLS;
 
-      var visible = visibleMetrics();
-      if (visible.length < 2) {
-        var currentVal = clamp01(Number((sim.average_metrics || {})[metricKey]) || 0);
-        var dotY = cssH - pad.bottom - currentVal * plotH;
-        ctx.fillStyle = isWarning ? "#7a5630" : "#6b2f1a";
-        ctx.beginPath();
-        ctx.arc(pad.left + plotW / 2, dotY, 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-        return;
+      // Build a map: column index (0..11) → metric value.
+      // When more than NUM_COLS buckets exist, visible[0] is a lead-in (off-screen
+      // previous bucket) and visible[1..NUM_COLS] map to columns 0..NUM_COLS-1.
+      var hasLeadIn = visible.length > NUM_COLS;
+      var dataStart = hasLeadIn ? 1 : 0; // skip lead-in for dots/labels
+      var colVals = {};
+      var leadInVal = hasLeadIn ? clamp01(Number(visible[0][metricKey]) || 0) : null;
+      for (var i = dataStart; i < visible.length; i++) {
+        var col = i - dataStart;
+        if (col < NUM_COLS) colVals[col] = clamp01(Number(visible[i][metricKey]) || 0);
       }
 
-      var tMin = visible[0].t;
-      var tMax = visible[visible.length - 1].t;
-      var tSpan = tMax - tMin || 1;
-
-      function toX(t) { return pad.left + ((t - tMin) / tSpan) * plotW; }
+      function colCenterX(col) { return pad.left + col * colW + colW / 2; }
       function toY(val) { return cssH - pad.bottom - clamp01(val) * plotH; }
 
-      // Fill area under line
-      ctx.beginPath();
-      ctx.moveTo(pad.left, cssH - pad.bottom);
-      for (var i = 0; i < visible.length; i++) {
-        ctx.lineTo(toX(visible[i].t), toY(visible[i][metricKey]));
+      // ---- Vertical dashed grid lines ----
+      ctx.strokeStyle = "rgba(74, 43, 20, 0.18)";
+      ctx.lineWidth = 0.5;
+      ctx.setLineDash([3, 5]);
+      for (var col = 0; col <= NUM_COLS; col++) {
+        var x = pad.left + col * colW;
+        ctx.beginPath();
+        ctx.moveTo(x, pad.top);
+        ctx.lineTo(x, cssH - pad.bottom);
+        ctx.stroke();
       }
-      ctx.lineTo(pad.left + plotW, cssH - pad.bottom);
-      ctx.closePath();
-      ctx.fillStyle = isWarning ? "rgba(122, 86, 48, 0.08)" : "rgba(74, 43, 20, 0.07)";
-      ctx.fill();
+      ctx.setLineDash([]);
 
-      // Main line
-      ctx.beginPath();
-      ctx.strokeStyle = isWarning ? "#7a5630" : "#6b2f1a";
-      ctx.lineWidth = 1.3;
-      ctx.lineJoin = "round";
-      ctx.lineCap = "round";
-      for (var i = 0; i < visible.length; i++) {
-        var lx = toX(visible[i].t);
-        var ly = toY(visible[i][metricKey]);
-        if (i === 0) ctx.moveTo(lx, ly);
-        else ctx.lineTo(lx, ly);
+      // ---- Bottom labels ----
+      var labelFont = '8px "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive';
+      ctx.font = labelFont;
+      ctx.fillStyle = "rgba(74, 43, 20, 0.52)";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      var labelY = cssH - pad.bottom + 5;
+      for (var col = 0; col < NUM_COLS; col++) {
+        if (!(col in colVals)) continue; // no data for this column
+        var bucket = visible[col + dataStart];
+        var suffix = isHourly ? "h" : "d";
+        ctx.fillText((bucket.bucketIndex + 1) + suffix, colCenterX(col), labelY);
       }
-      ctx.stroke();
+
+      // ---- Fill area under line ----
+      var colsWithData = Object.keys(colVals).map(Number).sort(function(a, b) { return a - b; });
+      if (colsWithData.length >= 1) {
+        ctx.beginPath();
+        if (hasLeadIn && leadInVal !== null) {
+          ctx.moveTo(pad.left, cssH - pad.bottom);
+          ctx.lineTo(pad.left, toY(leadInVal));
+        } else {
+          ctx.moveTo(colCenterX(colsWithData[0]), cssH - pad.bottom);
+        }
+        for (var i = 0; i < colsWithData.length; i++) {
+          ctx.lineTo(colCenterX(colsWithData[i]), toY(colVals[colsWithData[i]]));
+        }
+        var lastX = colCenterX(colsWithData[colsWithData.length - 1]);
+        ctx.lineTo(lastX, cssH - pad.bottom);
+        ctx.closePath();
+        ctx.fillStyle = isWarning ? "rgba(122, 86, 48, 0.08)" : "rgba(74, 43, 20, 0.07)";
+        ctx.fill();
+      }
+
+      // ---- Connecting line ----
+      if (colsWithData.length >= 1) {
+        ctx.beginPath();
+        ctx.strokeStyle = isWarning ? "#7a5630" : "#6b2f1a";
+        ctx.lineWidth = 1.2;
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        // Start from lead-in at left edge if present
+        if (hasLeadIn && leadInVal !== null) {
+          ctx.moveTo(pad.left, toY(leadInVal));
+        }
+        for (var i = 0; i < colsWithData.length; i++) {
+          var cx = colCenterX(colsWithData[i]);
+          var cy = toY(colVals[colsWithData[i]]);
+          if (i === 0 && !(hasLeadIn && leadInVal !== null)) ctx.moveTo(cx, cy);
+          else ctx.lineTo(cx, cy);
+        }
+        ctx.stroke();
+      }
+
+      // ---- Data dots ----
+      var dotColor = isWarning ? "rgba(122, 86, 48, 0.72)" : "rgba(74, 43, 20, 0.72)";
+      ctx.fillStyle = dotColor;
+      for (var i = 0; i < colsWithData.length; i++) {
+        var col = colsWithData[i];
+        ctx.beginPath();
+        ctx.arc(colCenterX(col), toY(colVals[col]), 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // ---- Value labels above dots, center-aligned ----
+      var valFont = '7px "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive';
+      ctx.font = valFont;
+      ctx.fillStyle = "rgba(74, 43, 20, 0.62)";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      for (var i = 0; i < colsWithData.length; i++) {
+        var col = colsWithData[i];
+        var vx = colCenterX(col);
+        var vy = toY(colVals[col]) - 4;
+        ctx.fillText(colVals[col].toFixed(2), vx, vy);
+      }
 
       ctx.restore();
-    }
-
-    function drawCourseAttendance() {
-      if (!attendanceCanvas || !attendanceCtx || !sim) return;
-      var rect = elementLayoutSize(attendanceCanvas);
-      attendanceCtx.clearRect(0, 0, rect.width, rect.height);
-      var slots = sim.course_slot_attendance;
-      if (!slots || !slots.length) {
-        attendanceCtx.fillStyle = "#9ca3a8";
-        attendanceCtx.font = "13px system-ui, -apple-system, Segoe UI, sans-serif";
-        attendanceCtx.textAlign = "center";
-        attendanceCtx.textBaseline = "middle";
-        attendanceCtx.fillText("No course data yet", rect.width / 2, rect.height / 2);
-        return;
-      }
-
-      var pad = { top: 22, bottom: 32, left: 18, right: 14 };
-      var plotW = rect.width - pad.left - pad.right;
-      var plotH = rect.height - pad.top - pad.bottom;
-      if (plotW <= 0 || plotH <= 0) return;
-
-      var groupCount = slots.length;
-      var groupGap = 12;
-      var groupW = (plotW - groupGap * (groupCount - 1)) / groupCount;
-      var barGap = 3;
-      var barW = Math.max(2, (groupW - barGap) / 2);
-      var maxVal = 0;
-      for (var s = 0; s < slots.length; s++) {
-        maxVal = Math.max(maxVal, slots[s].enrolled || 0, slots[s].attended || 0);
-      }
-      maxVal = Math.max(1, Math.ceil(maxVal * 1.18));
-
-      attendanceCtx.save();
-
-      // Draw horizontal grid lines
-      attendanceCtx.strokeStyle = "rgba(255,255,255,0.06)";
-      attendanceCtx.lineWidth = 0.6;
-      for (var g = 0; g <= 3; g++) {
-        var gy = pad.top + (g / 3) * plotH;
-        attendanceCtx.beginPath();
-        attendanceCtx.moveTo(pad.left, gy);
-        attendanceCtx.lineTo(rect.width - pad.right, gy);
-        attendanceCtx.stroke();
-      }
-
-      // Draw bars
-      for (var s = 0; s < slots.length; s++) {
-        var gx = pad.left + s * (groupW + groupGap);
-
-        // Enrolled bar (lighter brown)
-        var enrolledH = maxVal > 0 ? ((slots[s].enrolled || 0) / maxVal) * plotH : 0;
-        attendanceCtx.fillStyle = "#6a9cc4";
-        attendanceCtx.fillRect(gx, pad.top + plotH - enrolledH, barW, Math.max(0, enrolledH));
-
-        // Attended bar (darker brown)
-        var attendedH = maxVal > 0 ? ((slots[s].attended || 0) / maxVal) * plotH : 0;
-        attendanceCtx.fillStyle = "#c4905c";
-        attendanceCtx.fillRect(gx + barW + barGap, pad.top + plotH - attendedH, barW, Math.max(0, attendedH));
-
-        // Slot label below
-        attendanceCtx.fillStyle = "#e8e6e0";
-        attendanceCtx.font = "9px system-ui, -apple-system, Segoe UI, sans-serif";
-        attendanceCtx.textAlign = "center";
-        attendanceCtx.textBaseline = "top";
-        var label = COURSE_SLOT_LABELS[s].start;
-        attendanceCtx.fillText(label, gx + groupW / 2, pad.top + plotH + 6);
-
-        // Enrolled count above bar
-        attendanceCtx.fillStyle = "#8ab4d8";
-        attendanceCtx.font = "bold 9px system-ui, -apple-system, Segoe UI, sans-serif";
-        attendanceCtx.fillText(slots[s].enrolled || 0, gx + barW / 2, pad.top + plotH - enrolledH - 12);
-
-        // Attended count above bar
-        attendanceCtx.fillStyle = "#e8c97a";
-        attendanceCtx.fillText(slots[s].attended || 0, gx + barW + barGap + barW / 2, pad.top + plotH - attendedH - 12);
-      }
-
-      attendanceCtx.restore();
     }
 
     function renderNetworkSummary() {
@@ -2351,7 +2268,7 @@
         if (selected) {
           ctx.beginPath();
           ctx.strokeStyle = agentColors.selected;
-          ctx.lineWidth = 1.4;
+          ctx.lineWidth = 1.2;
           ctx.arc(x, y, 6.0, 0, Math.PI * 2);
           ctx.stroke();
         }
