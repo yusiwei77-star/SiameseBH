@@ -1,0 +1,3179 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The BH-S Marauder's Map</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --panel: rgba(10, 10, 10, 0.28);
+      --side-panel-width: 340px;
+      --text: #f0ede6;
+      --muted: #b0b4a8;
+      --line: rgba(255, 255, 255, 0.06);
+      --agent: #e11d48;
+      --path: #f97316;
+      --selected: #f8fafc;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: var(--bg);
+      color: var(--text);
+      font: 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .app {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .app:not([data-panels-ready="true"]) aside {
+      visibility: hidden;
+    }
+    aside {
+      position: absolute;
+      top: var(--panel-y, 0px);
+      z-index: 2;
+      width: var(--side-panel-width);
+      height: var(--panel-height, 100%);
+      transform: scale(var(--panel-scale, 1));
+      transform-origin: top left;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 18px;
+      color: #3b2412;
+      background: transparent;
+      border-right: 0;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      font-family: "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive;
+      font-size: 12px;
+    }
+    .left-panel {
+      left: var(--left-panel-x, 0px);
+      padding-bottom: 54px;
+    }
+    .right-panel {
+      left: var(--right-panel-x, calc(100% - var(--side-panel-width)));
+      right: auto;
+      border-right: 0;
+      border-left: 0;
+    }
+    h1 {
+      margin: 0 0 14px;
+      font-size: 16px;
+      line-height: 1.2;
+      letter-spacing: 0;
+      color: #3b2412;
+      font-weight: 500;
+      text-shadow: none;
+    }
+    .title-underline,
+    .section-divider {
+      display: block;
+      width: 100%;
+      height: 10px;
+      margin: -8px 0 8px;
+      background: transparent;
+    }
+    .section-divider {
+      margin: 12px 0 6px;
+    }
+    h2 {
+      margin: 0 0 6px;
+      font-size: 11px;
+      text-transform: none;
+      letter-spacing: 0;
+      font-weight: 500;
+      text-shadow: none;
+      color: rgba(74, 43, 20, 0.74);
+    }
+    button, select {
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: #3b2412;
+      cursor: pointer;
+      font: inherit;
+      padding: 2px 0;
+      min-height: 20px;
+      text-shadow: none;
+    }
+    button:hover, select:hover { color: rgba(74, 43, 20, 0.82); }
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0;
+      margin: 3px 0 4px;
+      align-items: center;
+    }
+    .controls button {
+      position: relative;
+      line-height: 1.1;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      text-decoration-thickness: 0.48px;
+    }
+    .controls button + button::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 50%;
+      width: 0;
+      height: 10px;
+      border-left: 0.48px solid rgba(74, 43, 20, 0.52);
+      transform: translateY(-50%);
+    }
+    .controls .wide { grid-column: 1 / -1; }
+    .submap-controls {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1px;
+      margin: 4px 0 0;
+    }
+    .submap-controls button {
+      position: relative;
+      min-height: 17px;
+      padding: 0 0 0 10px;
+      text-align: left;
+      font-size: 10px;
+      line-height: 1.15;
+      color: rgba(74, 43, 20, 0.68);
+    }
+    .submap-controls button::before {
+      content: "";
+      position: absolute;
+      left: 1px;
+      top: 50%;
+      width: 3.2px;
+      height: 3.2px;
+      border-radius: 50%;
+      background: rgba(74, 43, 20, 0.48);
+      transform: translateY(-50%);
+    }
+    .submap-controls button:hover,
+    .submap-controls button.active {
+      color: #3b2412;
+    }
+    .submap-controls button.active::before {
+      background: rgba(74, 43, 20, 0.82);
+    }
+    .submap-dots {
+      display: inline-block;
+      font-family: "Times New Roman", Georgia, serif;
+      letter-spacing: 0.8px;
+      margin: 0 2px;
+    }
+    .submap-count {
+      display: inline-block;
+      font-size: 8px;
+      line-height: 1;
+      vertical-align: baseline;
+    }
+    #simFacts {
+      display: grid;
+      grid-template-columns: minmax(54px, 1fr) minmax(92px, 1fr) minmax(70px, 1fr) minmax(64px, 1fr);
+      column-gap: 8px;
+      row-gap: 5px;
+      margin: 8px 0 0;
+    }
+    .sim-row {
+      display: contents;
+    }
+    .sim-key { color: rgba(74, 43, 20, 0.72); text-shadow: none; white-space: nowrap; text-align: left; }
+    .sim-val {
+      text-align: center;
+      font-family: inherit;
+      font-size: 10px;
+      text-shadow: none;
+    }
+    .counts {
+      display: grid;
+      gap: 4px;
+      margin-top: 6px;
+    }
+    .count-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(74, 43, 20, 0.14);
+      padding-bottom: 3px;
+    }
+    .metrics-tabs {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 2px;
+      margin-top: 6px;
+    }
+    .metrics-tab {
+      border: 0;
+      border-bottom: 1px solid rgba(74, 43, 20, 0.18);
+      border-radius: 0;
+      background: transparent;
+      color: rgba(74, 43, 20, 0.62);
+      cursor: pointer;
+      font: inherit;
+      font-size: 9px;
+      line-height: 1.15;
+      padding: 4px 2px;
+      text-align: center;
+      min-height: 26px;
+      text-decoration: none;
+      overflow: hidden;
+      text-overflow: clip;
+      white-space: nowrap;
+      transition: color 160ms ease, border-color 160ms ease;
+    }
+    .metrics-tab:hover {
+      color: rgba(74, 43, 20, 0.85);
+    }
+    .metrics-tab.active {
+      color: #3b2412;
+      border-bottom: 1.4px solid rgba(74, 43, 20, 0.78);
+    }
+    .metrics-stage {
+      position: relative;
+      width: 100%;
+      height: 132px;
+      margin-top: 4px;
+    }
+    .metrics-chart-pane {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: flex-start;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .metrics-chart-pane.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .metrics-chart-pane .chart-area {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
+    }
+    .metrics-chart-pane canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: transparent;
+    }
+    .metrics-chart-value {
+      flex: 0 0 auto;
+      font-size: 11px;
+      font-weight: 500;
+      color: #3b2412;
+      font-variant-numeric: tabular-nums;
+      text-align: center;
+      line-height: 1.2;
+    }
+    .attendance-wrap {
+      position: relative;
+      height: 170px;
+      border: 0;
+      border-top: 1px solid rgba(74, 43, 20, 0.12);
+      border-bottom: 1px solid rgba(74, 43, 20, 0.12);
+      border-radius: 0;
+      background: transparent;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    #attendanceCanvas {
+      width: 100%;
+      height: 100%;
+      background: transparent;
+    }
+    .attendance-legend {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      margin-top: 6px;
+      font-size: 9px;
+      color: rgba(74, 43, 20, 0.68);
+    }
+    .attendance-legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .attendance-legend .swatch {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+    .network-summary {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin: 10px 0;
+      font-size: 10px;
+    }
+    .network-summary div {
+      border-bottom: 1px solid rgba(74, 43, 20, 0.14);
+      padding-bottom: 5px;
+    }
+    .network-wrap {
+      position: relative;
+      height: 360px;
+      border: 0;
+      border-top: 1px solid rgba(74, 43, 20, 0.12);
+      border-bottom: 1px solid rgba(74, 43, 20, 0.12);
+      border-radius: 0;
+      background: transparent;
+      overflow: hidden;
+    }
+    #socialNetworkCanvas {
+      width: 100%;
+      height: 100%;
+      background: transparent;
+    }
+    .layer-controls {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 3px;
+      margin-top: 6px;
+    }
+    .layer-row {
+      display: grid;
+      grid-template-columns: 8px minmax(0, 1fr);
+      align-items: center;
+      gap: 2px;
+      padding: 2px 0;
+    }
+    .layer-row input[type="checkbox"] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 8px;
+      height: 8px;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      border: 1.2px solid rgba(74, 43, 20, 0.58);
+      border-radius: 1px;
+      background: rgba(255, 241, 190, 0.20);
+      box-shadow: inset 0 0 0 1px rgba(255, 241, 190, 0.18);
+      cursor: pointer;
+      color: #3b2412;
+      font-family: "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive;
+      font-size: 9px;
+      font-weight: bold;
+      line-height: 1;
+    }
+    .layer-row input[type="checkbox"]:checked::after {
+      content: "\2713";
+      transform: translateY(-0.5px);
+    }
+    .layer-row input[type="checkbox"]:focus-visible {
+      outline: 2px solid rgba(74, 43, 20, 0.35);
+      outline-offset: 2px;
+    }
+    .layer-row label {
+      color: #3b2412;
+      font-size: 8.5px;
+      text-shadow: none;
+      cursor: pointer;
+      overflow: hidden;
+      text-overflow: clip;
+      white-space: nowrap;
+    }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    .hint {
+      color: rgba(74, 43, 20, 0.68);
+      font-size: 10px;
+      margin-top: 16px;
+      text-shadow: none;
+      line-height: 1.55;
+    }
+    .map-credit {
+      position: absolute;
+      left: 18px;
+      bottom: 14px;
+      width: calc(100% - 36px);
+      margin: 0;
+      color: rgba(74, 43, 20, 0.42);
+      font-size: 9px;
+      font-style: italic;
+      line-height: 1.35;
+      text-shadow: none;
+    }
+    main {
+      position: absolute;
+      inset: 0;
+      background-color: var(--bg);
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background-color: transparent;
+      cursor: default;
+    }
+    .tooltip {
+      position: fixed;
+      z-index: 9999;
+      pointer-events: none;
+      background: rgba(10, 10, 10, 0.92);
+      color: #e8e6e0;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      line-height: 1.5;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+      display: none;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.22); }
+    select option {
+      background: #1a1a1a;
+      color: #e8e6e0;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="left-panel">
+      <h1>The BH-S Marauder's Map</h1>
+      <canvas id="leftTitleUnderline" class="title-underline" aria-hidden="true"></canvas>
+      <div class="controls">
+        <button id="playBtn" type="button">Play</button>
+        <button id="stepBtn" type="button">Step</button>
+        <button id="resetBtn" type="button">Reset</button>
+        <button id="speedBtn" type="button" title="Playback speed">1x</button>
+      </div>
+      <canvas class="section-divider" aria-hidden="true"></canvas>
+      <h2>Map Layers</h2>
+      <div class="layer-controls" id="layerControls"></div>
+      <canvas class="section-divider" aria-hidden="true"></canvas>
+      <h2>Sub Maps</h2>
+      <div class="submap-controls" id="submapControls"></div>
+      <canvas class="section-divider" aria-hidden="true"></canvas>
+      <h2>Simulation</h2>
+      <dl id="simFacts"></dl>
+      <canvas class="section-divider" aria-hidden="true"></canvas>
+      <p class="hint">Click an agent to show its route; click empty map space to clear selection. Mouse wheel zooms, right-button drag pans.</p>
+      <p class="map-credit">Inspired by the Marauder's Map from Harry Potter.</p>
+    </aside>
+    <main>
+      <canvas id="mapCanvas"></canvas>
+      <div id="tooltip" class="tooltip"></div>
+    </main>
+    <aside class="right-panel">
+      <h1>Dynamics Monitor</h1>
+      <canvas class="section-divider" aria-hidden="true"></canvas>
+      <h2 id="metricsHeading">Average Metrics</h2>
+      <div class="metrics-tabs" id="metricsTabs"></div>
+      <div class="metrics-stage" id="metricsStage"></div>
+      <canvas class="section-divider" aria-hidden="true"></canvas>
+      <h2>Course Attendance</h2>
+      <div class="attendance-wrap">
+        <canvas id="attendanceCanvas"></canvas>
+      </div>
+      <div class="attendance-legend">
+        <span><span class="swatch" style="background:#6a9cc4"></span> Enrolled</span>
+        <span><span class="swatch" style="background:#c4905c"></span> Attended</span>
+      </div>
+      <canvas class="section-divider" aria-hidden="true"></canvas>
+      <h2>Social Network</h2>
+      <div class="network-summary" id="networkSummary"></div>
+      <div class="network-wrap">
+        <canvas id="socialNetworkCanvas"></canvas>
+      </div>
+      <p class="hint">Only agents with active social ties are shown. Click a node to select the same agent on the map.</p>
+      <canvas class="section-divider" aria-hidden="true"></canvas>
+      <h2>State Counts</h2>
+      <div class="counts" id="stateCounts"></div>
+    </aside>
+  </div>
+  <script>
+    const CELL = 8;
+    const agentColors = {
+      base: "#3b2412",
+      glow: "#6b2f1a",
+      selected: "#4a2b14",
+      trail: "#6b2f1a",
+    };
+    const MAP_LAYER_DEFS = [
+      { id: "paperLayer", label: "Paper" },
+      { id: "terrainLayer", label: "Terrain" },
+      { id: "waterLayer", label: "Water" },
+      { id: "roadLayer", label: "Roads" },
+      { id: "buildingLayer", label: "Buildings" },
+      { id: "fenceBorderLayer", label: "Border" },
+    ];
+    const SUBMAP_DEFS = [
+      { id: "overview", label: "Overview", bounds: null },
+      { id: "northwest", label: "Northwest", bounds: { left: 0.015, top: 0.040, right: 0.365, bottom: 0.390 } },
+      { id: "northeast", label: "Northeast", bounds: { left: 0.688, top: 0.220, right: 0.993, bottom: 0.525 } },
+      { id: "central", label: "Central", bounds: { left: 0.210, top: 0.310, right: 0.720, bottom: 0.820 } },
+      { id: "southwest", label: "Southwest", bounds: { left: 0.044, top: 0.590, right: 0.395, bottom: 0.941 } },
+      { id: "southeast", label: "Southeast", bounds: { left: 0.680, top: 0.634, right: 0.980, bottom: 0.934 } },
+    ];
+    const SUBMAP_TRANSITION_MS = 1800;
+    const MAP_LAYER_TRANSITION = {
+      buildingLayer: { outStart: 0.02, inStart: 0.52 },
+      roadLayer: { outStart: 0.08, inStart: 0.46 },
+      waterLayer: { outStart: 0.12, inStart: 0.42 },
+      terrainLayer: { outStart: 0.16, inStart: 0.38 },
+      fenceBorderLayer: { outStart: 0.20, inStart: 0.34 },
+      paperLayer: { outStart: 0.24, inStart: 0.30 },
+      overlays: { outStart: 0.10, inStart: 0.48 },
+    };
+    const SKIPPED_REGION_LABELS = new Set(["东区排球场2"]);
+    const CENTER_PREFERRED_REGION_LABELS = new Set(["东区3公寓", "东区4公寓"]);
+    const AGENT_NAME_LAYER_SCALE = 1.5;
+    const PLAYBACK_SPEEDS = [0.5, 1, 2, 5, 10];
+    const STATE_REFRESH_INTERVAL_MS = 150;
+    const mapLayerState = Object.fromEntries(
+      MAP_LAYER_DEFS.map((layer) => [layer.id, { visible: true }])
+    );
+    const canvas = document.getElementById("mapCanvas");
+    const ctx = canvas.getContext("2d");
+    const socialCanvas = document.getElementById("socialNetworkCanvas");
+    const socialCtx = socialCanvas.getContext("2d");
+    const attendanceCanvas = document.getElementById("attendanceCanvas");
+    const attendanceCtx = attendanceCanvas.getContext("2d");
+    const tooltip = document.getElementById("tooltip");
+    const appRoot = document.querySelector(".app");
+    const leftPanel = document.querySelector(".left-panel");
+    const rightPanel = document.querySelector(".right-panel");
+    const view = { scale: 1, offsetX: 0, offsetY: 0, dragging: false, lastX: 0, lastY: 0 };
+    let panelBaseScale = null;
+    let summary = null;
+    let sim = null;
+    let baseCanvas = null;
+    let agentNameLayer = null;
+    let mapLayers = null;
+    let activeSubmapId = "overview";
+    let submapTransition = null;
+    let paperTextureImage = null;
+    let paperTextureReady = false;
+    let continuousPaperBase = null;
+    let selectedId = null;
+    let hoveredAgent = null;
+    let hoveredNetworkNodeId = null;
+    const nameFadeAlphas = new Map(); // agent id -> current alpha (0..1)
+    const agentNameSprites = new Map(); // display name -> prerendered text bitmap
+    let animationStarted = false;
+    let stateFetchError = null;
+    let simReceivedAt = performance.now();
+    const regionById = new Map();
+    const regionDisplayPoints = new Map();
+    const agentAnimations = new Map();
+    const agentPathCache = new Map();
+    const agentPathKeyCache = new Map();
+    const socialNodePositions = new Map();
+    let stateRequestEpoch = 0;
+    let controlInFlight = false;
+    const RESET_ANIMATION_SPEED_MULTIPLIER = 3.0;
+    const AVERAGE_METRIC_DEFS = [
+      { key: "energy", label: "energy" },
+      { key: "satiety", label: "satiety" },
+      { key: "intrinsic_satisfaction", label: "intr." },
+      { key: "extrinsic_satisfaction", label: "extr." },
+      { key: "physical_health", label: "phys." },
+      { key: "mental_health", label: "ment." },
+      { key: "wellbeing", label: "wellbeing" },
+    ];
+    const COURSE_SLOT_LABELS = [
+      { start: "08:00", end: "09:35" },
+      { start: "09:50", end: "11:25" },
+      { start: "14:00", end: "15:35" },
+      { start: "15:50", end: "17:25" },
+      { start: "19:00", end: "20:35" },
+    ];
+    let metricsHistory = [];
+    let metricsShowAll = false;
+    let metricsTimeWindow = 600_000;
+    let metricsTargetWindow = 600_000;
+    let metricsAnimFrame = null;
+    let activeMetricKey = "energy";
+    const METRICS_DEFAULT_WINDOW = 600_000;
+    const METRICS_ANIM_DURATION = 500;
+
+    async function fetchJson(url, options = {}) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 6000);
+      let response;
+      try {
+        response = await fetch(url, { ...options, signal: controller.signal });
+      } catch (error) {
+        const hint = window.location.protocol === "file:"
+          ? "Open the viewer through http://127.0.0.1:8789/agent_viewer.html instead of the local HTML file."
+          : "Check that the visual server is still running on this port.";
+        const message = error && error.name === "AbortError"
+          ? `${url} timed out. ${hint}`
+          : `${url} failed. ${hint}`;
+        throw new Error(message);
+      } finally {
+        clearTimeout(timeout);
+      }
+      if (!response.ok) throw new Error(`${url} returned ${response.status} ${response.statusText}`);
+      return await response.json();
+    }
+
+    function showInitError(error) {
+      if (appRoot) appRoot.dataset.panelsReady = "true";
+      const message = error instanceof Error ? error.message : String(error);
+      const safeMessage = escapeHtml(message);
+      document.getElementById("layerControls").innerHTML = `<p class="hint">${safeMessage}</p>`;
+      document.getElementById("simFacts").innerHTML = `<dt>error</dt><dd>${safeMessage}</dd>`;
+      document.getElementById("stateCounts").innerHTML = `<p class="hint">${safeMessage}</p>`;
+      const rect = canvas.getBoundingClientRect();
+      const ratio = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.floor(rect.width * ratio));
+      canvas.height = Math.max(1, Math.floor(rect.height * ratio));
+      ctx.save();
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, rect.width, rect.height);
+      ctx.fillStyle = "#e8e6e0";
+      ctx.font = "14px system-ui, sans-serif";
+      ctx.textBaseline = "top";
+      wrapCanvasText(ctx, message, 24, 24, Math.max(120, rect.width - 48), 22);
+      ctx.restore();
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function wrapCanvasText(textCtx, text, x, y, maxWidth, lineHeight) {
+      const words = String(text).split(/\s+/);
+      let line = "";
+      for (const word of words) {
+        const testLine = line ? `${line} ${word}` : word;
+        if (textCtx.measureText(testLine).width > maxWidth && line) {
+          textCtx.fillText(line, x, y);
+          line = word;
+          y += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+      if (line) textCtx.fillText(line, x, y);
+    }
+
+    function metricSampleElapsedSeconds(sample, secondsPerStep) {
+      if (!sample) return null;
+      const elapsed = Number(sample.elapsed_seconds);
+      if (Number.isFinite(elapsed)) return elapsed;
+      const step = Number(sample.step);
+      if (Number.isFinite(step)) return step * Math.max(1, Number(secondsPerStep) || 1);
+      return null;
+    }
+
+    function normalizeMetricsHistory(rawHistory, secondsPerStep) {
+      const normalized = [];
+      let lastElapsed = null;
+      for (const raw of rawHistory || []) {
+        const elapsed = metricSampleElapsedSeconds(raw, secondsPerStep);
+        if (elapsed === null) continue;
+        if (lastElapsed !== null && elapsed <= lastElapsed) continue;
+        const item = {
+          ...raw,
+          elapsed_seconds: elapsed,
+          t: elapsed * 1000,
+          energy: clamp01(Number(raw.energy) || 0),
+          satiety: clamp01(Number(raw.satiety) || 0),
+          physical_health: clamp01(Number(raw.physical_health) || 0),
+          mental_health: clamp01(Number(raw.mental_health) || 0),
+          wellbeing: clamp01(Number(raw.wellbeing) || 0),
+          intrinsic_satisfaction: clamp01(Number(raw.intrinsic_satisfaction) || 0),
+          extrinsic_satisfaction: clamp01(Number(raw.extrinsic_satisfaction) || 0),
+        };
+        delete item.ts;
+        normalized.push(item);
+        lastElapsed = elapsed;
+      }
+      return normalized;
+    }
+
+    function metricsHistorySpanMs() {
+      if (metricsHistory.length < 2) return 0;
+      const first = metricsHistory[0];
+      const last = metricsHistory[metricsHistory.length - 1];
+      return Math.max(0, Number(last.t) - Number(first.t));
+    }
+
+    async function init() {
+      metricsShowAll = false;
+      metricsTimeWindow = METRICS_DEFAULT_WINDOW;
+      metricsTargetWindow = METRICS_DEFAULT_WINDOW;
+      if (metricsAnimFrame) { cancelAnimationFrame(metricsAnimFrame); metricsAnimFrame = null; }
+      summary = await fetchJson("/api/summary");
+      sim = await fetchJson("/api/state");
+      const metricsSnapshot = await fetchJson("/api/metrics_history");
+      simReceivedAt = performance.now();
+      // Restore metrics history from server checkpoint
+      metricsHistory = (metricsSnapshot.metrics_history && metricsSnapshot.metrics_history.length > 0)
+        ? normalizeMetricsHistory(metricsSnapshot.metrics_history, sim.seconds_per_step)
+        : [];
+      indexRegions();
+      updateAgentPathCache(sim);
+      resetAgentAnimations(sim);
+      window.__sim = sim;
+      window.__simReceivedAt = simReceivedAt;
+      appendMetricsSnapshot(sim);
+      await preparePaperTexture();
+      buildBaseCanvas();
+      bindControls();
+      resize();
+      updatePanel();
+      setInterval(refreshState, STATE_REFRESH_INTERVAL_MS);
+      if (!animationStarted) {
+        animationStarted = true;
+        requestAnimationFrame(animationLoop);
+      }
+    }
+
+    async function refreshState() {
+      if (controlInFlight) return;
+      const requestEpoch = stateRequestEpoch;
+      try {
+        let nextSim = await fetchJson("/api/state");
+        if (stateNeedsPaths(nextSim)) {
+          nextSim = await fetchJson("/api/state?paths=1");
+        }
+        if (controlInFlight || requestEpoch !== stateRequestEpoch) return;
+        const receivedAt = performance.now();
+        stateFetchError = null;
+        if (!sim || nextSim.step !== sim.step || Boolean(nextSim.server?.playing) !== Boolean(sim.server?.playing)) {
+          simReceivedAt = receivedAt;
+        }
+        updateAgentPathCache(nextSim);
+        reconcileAgentAnimations(nextSim);
+        sim = nextSim;
+        window.__sim = sim;
+        window.__simReceivedAt = simReceivedAt;
+        appendMetricsSnapshot(sim);
+        if (selectedId && !findAgent(selectedId)) selectedId = null;
+        updatePanel();
+      } catch (error) {
+        stateFetchError = error instanceof Error ? error.message : String(error);
+      }
+    }
+
+    async function control(action, value = undefined) {
+      const requestEpoch = ++stateRequestEpoch;
+      controlInFlight = true;
+      try {
+        const nextSim = await fetchJson("/api/control", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(value === undefined ? { action } : { action, value }),
+        });
+        if (requestEpoch !== stateRequestEpoch) return;
+        if (action === "reset") {
+          agentPathCache.clear();
+          agentPathKeyCache.clear();
+          metricsHistory = [];
+          metricsShowAll = false;
+          metricsTimeWindow = METRICS_DEFAULT_WINDOW;
+          metricsTargetWindow = METRICS_DEFAULT_WINDOW;
+          if (metricsAnimFrame) { cancelAnimationFrame(metricsAnimFrame); metricsAnimFrame = null; }
+        }
+        simReceivedAt = performance.now();
+        updateAgentPathCache(nextSim);
+        reconcileAgentAnimations(nextSim, {
+          speedMultiplier: action === "reset" ? RESET_ANIMATION_SPEED_MULTIPLIER : 1.0,
+        });
+        sim = nextSim;
+        window.__sim = sim;
+        window.__simReceivedAt = simReceivedAt;
+        appendMetricsSnapshot(sim);
+        updatePanel();
+      } finally {
+        controlInFlight = false;
+      }
+    }
+
+    function bindControls() {
+      document.getElementById("playBtn").addEventListener("click", () => {
+        control(sim.server.playing ? "pause" : "play");
+      });
+      document.getElementById("stepBtn").addEventListener("click", () => control("step"));
+      document.getElementById("resetBtn").addEventListener("click", () => {
+        selectedId = null;
+        control("reset");
+      });
+      document.getElementById("speedBtn").addEventListener("click", () => {
+        const current = Number(sim?.server?.speed || 1);
+        const index = PLAYBACK_SPEEDS.findIndex((speed) => Number(speed) === current);
+        const nextSpeed = PLAYBACK_SPEEDS[(index + 1) % PLAYBACK_SPEEDS.length];
+        control("speed", nextSpeed);
+      });
+      bindLayerControls();
+      bindSubmapControls();
+    }
+
+    function bindLayerControls() {
+      renderLayerControls();
+      document.getElementById("layerControls").addEventListener("change", (event) => {
+        const target = event.target;
+        if (!target.dataset.layerId) return;
+        const state = mapLayerState[target.dataset.layerId];
+        if (!state) return;
+        state.visible = target.checked;
+        rebuildComposedBaseCanvas();
+      });
+    }
+
+    function bindSubmapControls() {
+      renderSubmapControls();
+      document.getElementById("submapControls").addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-submap-id]");
+        if (!button) return;
+        selectSubmap(button.dataset.submapId);
+      });
+    }
+
+    function renderLayerControls() {
+      const container = document.getElementById("layerControls");
+      container.innerHTML = MAP_LAYER_DEFS.map((layer) => {
+        const state = mapLayerState[layer.id];
+        const checked = state.visible ? "checked" : "";
+        const inputId = `layer-toggle-${layer.id}`;
+        return `
+          <div class="layer-row">
+            <input id="${inputId}" type="checkbox" data-layer-visible data-layer-id="${layer.id}" ${checked}>
+            <label for="${inputId}">${layer.label}</label>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderSubmapControls() {
+      const container = document.getElementById("submapControls");
+      container.innerHTML = SUBMAP_DEFS.map((submap) => {
+        const activeClass = submap.id === activeSubmapId ? "active" : "";
+        const count = submapAgentCount(submap);
+        return `<button type="button" class="${activeClass}" data-submap-id="${submap.id}"><span>${submap.label}</span><span class="submap-dots" aria-hidden="true">...</span><span class="submap-count">${count}</span></button>`;
+      }).join("");
+    }
+
+    function updateSubmapControls() {
+      const container = document.getElementById("submapControls");
+      for (const submap of SUBMAP_DEFS) {
+        const button = container.querySelector(`button[data-submap-id="${submap.id}"]`);
+        if (!button) continue;
+        button.classList.toggle("active", submap.id === activeSubmapId);
+        const countNode = button.querySelector(".submap-count");
+        if (countNode) countNode.textContent = submapAgentCount(submap);
+      }
+    }
+
+    function submapAgentCount(submap) {
+      const agents = sim?.agents || [];
+      if (!submap.bounds) return Number(sim?.agent_count ?? agents.length ?? 0);
+      if (!summary) return 0;
+      const bounds = submapWorldBounds(submap.id);
+      let count = 0;
+      const now = performance.now();
+      for (const agent of agents) {
+        const point = agentRenderPoint(agent, now);
+        if (
+          point.x >= bounds.left && point.x <= bounds.right &&
+          point.y >= bounds.top && point.y <= bounds.bottom
+        ) {
+          count += 1;
+        }
+      }
+      return count;
+    }
+
+    function selectSubmap(submapId) {
+      if (!SUBMAP_DEFS.some((submap) => submap.id === submapId)) return;
+      if (submapId === activeSubmapId && !submapTransition) return;
+      const fromId = activeSubmapId;
+      activeSubmapId = submapId;
+      submapTransition = {
+        fromId,
+        toId: submapId,
+        startedAt: performance.now(),
+        duration: SUBMAP_TRANSITION_MS,
+      };
+      updateSubmapControls();
+      draw();
+    }
+
+    function buildBaseCanvas() {
+      const width = summary.size.cols * CELL;
+      const height = summary.size.rows * CELL;
+      const terrainIndex = buildTerrainIndex(summary);
+      continuousPaperBase = null;
+      mapLayers = buildMapLayers(width, height, terrainIndex);
+      baseCanvas = composeBaseCanvas(width, height, mapLayers);
+      agentNameLayer = createScaledLayerCanvas(width, height, AGENT_NAME_LAYER_SCALE);
+      window.__mapLayers = mapLayers;
+      document.body.dataset.mapLayers = Object.keys(mapLayers).join(",");
+      document.body.dataset.mapLayerSize = `${width}x${height}`;
+      document.body.dataset.visibleMapLayers = MAP_LAYER_DEFS.map((layer) => layer.id).join(",");
+    }
+
+    function createLayerCanvas(width, height) {
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      return { canvas, ctx: canvas.getContext("2d") };
+    }
+
+    function createScaledLayerCanvas(width, height, scale) {
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.floor(width * scale));
+      canvas.height = Math.max(1, Math.floor(height * scale));
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      return { canvas, ctx, width, height, scale };
+    }
+
+    function buildMapLayers(width, height, terrainIndex) {
+      const layers = {
+        paperLayer: createLayerCanvas(width, height),
+        terrainLayer: createLayerCanvas(width, height),
+        waterLayer: createLayerCanvas(width, height),
+        roadLayer: createLayerCanvas(width, height),
+        buildingLayer: createLayerCanvas(width, height),
+        fenceBorderLayer: createLayerCanvas(width, height),
+      };
+
+      drawParchmentBackground(layers.paperLayer.ctx, width, height);
+
+      drawGrassTexture(layers.terrainLayer.ctx, terrainIndex.byTerrain.get("grass") || []);
+      drawOpenGroundTexture(layers.terrainLayer.ctx, terrainIndex.byTerrain.get("open_ground") || []);
+      drawSportsFieldTexture(layers.terrainLayer.ctx, terrainIndex.byTerrain.get("sports_field") || []);
+
+      drawWaterRipples(layers.waterLayer.ctx, terrainIndex.byTerrain.get("water") || []);
+      drawRoadInkLines(layers.roadLayer.ctx, terrainIndex);
+      drawBuildingOutlines(layers.buildingLayer.ctx, terrainIndex);
+
+      drawFenceEdges(layers.fenceBorderLayer.ctx, terrainIndex.byTerrain.get("fence") || []);
+
+      return layers;
+    }
+
+    function composeBaseCanvas(width, height, layers) {
+      const composed = document.createElement("canvas");
+      composed.width = width;
+      composed.height = height;
+      const base = composed.getContext("2d");
+      for (const { id } of MAP_LAYER_DEFS) {
+        const state = mapLayerState[id];
+        if (!state?.visible) continue;
+        const layer = layers[id];
+        if (!layer) continue;
+        base.drawImage(layer.canvas, 0, 0);
+      }
+      return composed;
+    }
+
+    function rebuildComposedBaseCanvas() {
+      if (!summary || !mapLayers) return;
+      baseCanvas = composeBaseCanvas(summary.size.cols * CELL, summary.size.rows * CELL, mapLayers);
+      document.body.dataset.visibleMapLayers = MAP_LAYER_DEFS
+        .filter((layer) => mapLayerState[layer.id].visible)
+        .map((layer) => layer.id)
+        .join(",");
+      draw();
+    }
+
+    function buildTerrainIndex(mapSummary) {
+      const byTerrain = new Map();
+      const terrainAt = new Map();
+      for (const cell of mapSummary.terrainCells || []) {
+        if (!byTerrain.has(cell.terrain)) byTerrain.set(cell.terrain, []);
+        byTerrain.get(cell.terrain).push(cell);
+        terrainAt.set(cellKey(cell.row, cell.col), cell.terrain);
+      }
+      return { byTerrain, terrainAt };
+    }
+
+    function cellKey(row, col) {
+      return `${row},${col}`;
+    }
+
+    function terrainAt(index, row, col) {
+      return index.terrainAt.get(cellKey(row, col));
+    }
+
+    function drawParchmentBackground(base, width, height) {
+      fillParchment(base, 0, 0, width, height);
+    }
+
+    async function preparePaperTexture() {
+      if (paperTextureReady || paperTextureImage) return;
+      const image = new Image();
+      const loaded = new Promise((resolve) => {
+        image.onload = () => {
+          paperTextureImage = image;
+          paperTextureReady = true;
+          continuousPaperBase = null;
+          resolve(true);
+        };
+        image.onerror = () => resolve(false);
+      });
+      image.src = "https://www.transparenttextures.com/patterns/natural-paper.png";
+      await Promise.race([
+        loaded,
+        new Promise((resolve) => setTimeout(() => resolve(false), 1800)),
+      ]);
+    }
+
+    function fillParchment(base, x, y, width, height) {
+      base.save();
+      base.fillStyle = "#e8d5a8";
+      base.fillRect(x, y, width, height);
+      if (paperTextureReady && paperTextureImage) {
+        const pattern = base.createPattern(paperTextureImage, "repeat");
+        if (pattern) {
+          base.fillStyle = pattern;
+          base.fillRect(x, y, width, height);
+        }
+      }
+      base.restore();
+    }
+
+    function drawGrassTexture(base, cells) {
+      base.save();
+      base.strokeStyle = "rgba(122, 86, 48, 0.34)";
+      base.lineWidth = 0.72;
+      base.lineCap = "round";
+      for (const cell of cells) {
+        const seed = hashString(`grass|${cell.row}|${cell.col}`);
+        const cx = (cell.col + 0.5) * CELL;
+        const cy = (cell.row + 0.58) * CELL;
+        const height = 4.8 + (seed % 7) * 0.16;
+        const spread = 1.55;
+        const lean = jitter(seed + 13, 0.42);
+        base.beginPath();
+        base.moveTo(cx, cy);
+        base.quadraticCurveTo(cx + lean * 0.3, cy - height * 0.54, cx + lean, cy - height);
+        base.moveTo(cx, cy);
+        base.quadraticCurveTo(cx - spread * 0.55, cy - height * 0.48, cx - spread, cy - height * 0.74);
+        base.moveTo(cx, cy);
+        base.quadraticCurveTo(cx + spread * 0.55, cy - height * 0.48, cx + spread, cy - height * 0.74);
+        base.stroke();
+      }
+      base.restore();
+    }
+
+    function drawOpenGroundTexture(base, cells) {
+      base.save();
+      base.strokeStyle = "rgba(184, 149, 92, 0.055)";
+      base.lineWidth = 0.55;
+      for (const cell of cells) {
+        const seed = hashString(`open|${cell.row}|${cell.col}`);
+        if (seed % 42 !== 0) continue;
+        const x = (cell.col + 0.28) * CELL;
+        const y = (cell.row + 0.32) * CELL;
+        base.beginPath();
+        base.moveTo(x, y);
+        base.lineTo(x + 3.1, y + 2.4);
+        if (seed % 3 === 0) {
+          base.moveTo(x + 3.1, y);
+          base.lineTo(x, y + 2.4);
+        }
+        base.stroke();
+      }
+      base.restore();
+    }
+
+    function drawSportsFieldTexture(base, cells) {
+      if (!cells.length) return;
+      base.save();
+      drawTerrainBoundary(base, cells, "rgba(122, 86, 48, 0.38)", 0.85);
+      base.strokeStyle = "rgba(122, 86, 48, 0.24)";
+      base.lineWidth = 0.68;
+      base.lineCap = "round";
+      for (const cell of cells) {
+        const seed = hashString(`sport|${cell.row}|${cell.col}`);
+        if ((cell.row + cell.col) % 3 !== 0) continue;
+        const x = cell.col * CELL + 1.2 + jitter(seed, 0.35);
+        const y = cell.row * CELL + 6.6 + jitter(seed + 7, 0.35);
+        base.beginPath();
+        base.moveTo(x, y);
+        base.lineTo(x + 5.6, y - 5.6);
+        base.stroke();
+      }
+      base.restore();
+    }
+
+    function drawWaterRipples(base, cells) {
+      base.save();
+      base.strokeStyle = "rgba(122, 86, 48, 0.34)";
+      base.lineWidth = 0.95;
+      base.lineCap = "round";
+      for (const cell of cells) {
+        const seed = hashString(`water|${cell.row}|${cell.col}`);
+        if (seed % 2 !== 0) continue;
+        const x = cell.col * CELL + 1.2;
+        const y = cell.row * CELL + 2.4 + (seed % 2) * 2.5;
+        base.beginPath();
+        base.moveTo(x, y);
+        base.quadraticCurveTo(x + 1.7, y - 1.2, x + 3.4, y);
+        base.quadraticCurveTo(x + 5.1, y + 1.2, x + 6.8, y);
+        base.stroke();
+      }
+      drawTerrainBoundary(base, cells, "rgba(122, 86, 48, 0.58)", 1.05);
+      base.restore();
+    }
+
+    function drawRoadInkLines(base, index) {
+      const roads = index.byTerrain.get("road") || [];
+      const inkLayer = createLayerCanvas(base.canvas.width, base.canvas.height);
+      const ink = inkLayer.ctx;
+      base.save();
+      ink.strokeStyle = "#4a2b14";
+      ink.lineWidth = 5.4;
+      ink.lineCap = "round";
+      ink.lineJoin = "round";
+      const runs = collectBoundaryRuns(roads);
+      for (const run of runs.horizontal) {
+        const seed = hashString(`road-h|${run.grid}|${run.start}|${run.end}`);
+        drawWobblyLine(ink, run.start * CELL, run.grid * CELL, run.end * CELL, run.grid * CELL, seed);
+      }
+      for (const run of runs.vertical) {
+        const seed = hashString(`road-v|${run.grid}|${run.start}|${run.end}`);
+        drawWobblyLine(ink, run.grid * CELL, run.start * CELL, run.grid * CELL, run.end * CELL, seed);
+      }
+      base.globalAlpha = 0.09;
+      base.drawImage(inkLayer.canvas, 0, 0);
+      base.globalAlpha = 1;
+      base.restore();
+    }
+
+    function drawBuildingOutlines(base, index) {
+      base.save();
+      const buildingCells = index.byTerrain.get("building") || [];
+      const gateCells = index.byTerrain.get("gate") || [];
+      drawBuildingLeftBottomShadow(base, buildingCells);
+      drawTerrainBoundary(base, buildingCells, "rgba(74, 43, 20, 0.30)", 0.95);
+      drawTerrainBoundary(base, gateCells, "rgba(74, 43, 20, 0.48)", 1.0);
+
+      const sportsCells = index.byTerrain.get("sports_field") || [];
+      drawTerrainBoundary(base, sportsCells, "rgba(122, 86, 48, 0.52)", 1.0);
+      drawAllRegionLabels(base, index);
+      base.restore();
+    }
+
+    function drawBuildingLeftBottomShadow(base, cells) {
+      if (!cells.length) return;
+      const set = new Set(cells.map((cell) => cellKey(cell.row, cell.col)));
+      base.save();
+      base.strokeStyle = "rgba(74, 43, 20, 0.28)";
+      base.lineWidth = 3.25;
+      base.lineCap = "round";
+      base.lineJoin = "round";
+      for (const cell of cells) {
+        const row = cell.row;
+        const col = cell.col;
+        const x = col * CELL;
+        const y = row * CELL;
+        const seed = hashString(`building-shadow|${row}|${col}`);
+        if (!set.has(cellKey(row, col - 1))) {
+          drawWobblyLine(base, x - 2.4, y + 0.6, x - 2.4, y + CELL - 0.6, seed);
+        }
+        if (!set.has(cellKey(row + 1, col))) {
+          drawWobblyLine(base, x + 0.6, y + CELL + 2.4, x + CELL - 0.6, y + CELL + 2.4, seed + 7);
+        }
+      }
+      base.restore();
+    }
+
+    function drawAllRegionLabels(base, index) {
+      for (const region of summary.regions || []) {
+        if (!region.name || !Array.isArray(region.cells) || region.cells.length === 0) continue;
+        if (SKIPPED_REGION_LABELS.has(String(region.name))) continue;
+        if (region.terrain === "gate") drawGateLabel(base, region, index);
+        else drawRegionLabel(base, region);
+      }
+    }
+
+    function drawRegionLabel(base, region) {
+      const preferCenter = CENTER_PREFERRED_REGION_LABELS.has(String(region.name));
+      const rect = largestCellRectangle(region.cells, { preferCenter });
+      if (!rect || rect.width <= 0 || rect.height <= 0) return;
+      const label = String(region.name);
+      const widthPx = rect.width * CELL;
+      const heightPx = rect.height * CELL;
+      const fontSize = Math.max(5.2, Math.min(9.2, heightPx * 0.44, widthPx / Math.max(2.2, label.length * 0.95)));
+      const horizontalFits = label.length * fontSize * 0.92 <= widthPx * 0.88 && fontSize <= heightPx * 0.72;
+      base.save();
+      const seed = hashString(`label|${region.id}`);
+      base.translate((rect.col + rect.width / 2) * CELL, (rect.row + rect.height / 2) * CELL);
+      base.rotate(horizontalFits ? jitter(seed, 0.028) : Math.PI / 4 + jitter(seed, 0.02));
+      base.font = `${fontSize.toFixed(1)}px KaiTi, STKaiti, FangSong, SimSun, Georgia, 'Times New Roman', serif`;
+      base.fillStyle = region.terrain === "sports_field" ? "rgba(74, 43, 20, 0.60)" : "rgba(74, 43, 20, 0.66)";
+      base.textAlign = "center";
+      base.textBaseline = "middle";
+      base.fillText(label, 0, 0, Math.max(12, horizontalFits ? widthPx * 0.86 : Math.hypot(widthPx, heightPx) * 0.62));
+      base.restore();
+    }
+
+    function drawGateLabel(base, region, index) {
+      const label = String(region.name);
+      const point = gateRoadLabelPoint(region, index, label);
+      if (!point) return;
+      base.save();
+      base.translate(point.x, point.y);
+      base.font = "7.8px KaiTi, STKaiti, FangSong, SimSun, Georgia, 'Times New Roman', serif";
+      base.fillStyle = "rgba(74, 43, 20, 0.66)";
+      base.textAlign = "center";
+      base.textBaseline = "middle";
+      base.fillText(label, 0, 0, CELL * Math.max(2, label.length * 0.9));
+      base.restore();
+    }
+
+    function gateRoadLabelPoint(region, index, label) {
+      const center = regionCellCenter(region);
+      if (!center) return null;
+      const candidates = [];
+      for (let distance = 1; distance <= 60; distance++) {
+        for (const [row, col, scoreBias] of [
+          [center.row, center.col - distance, 0],
+          [center.row, center.col + distance, 0],
+          [center.row - distance, center.col, 0.2],
+          [center.row + distance, center.col, 0.2],
+        ]) {
+          if (terrainAt(index, row, col) !== "road") continue;
+          const point = { x: (col + 0.5) * CELL, y: (row + 0.5) * CELL };
+          if (gateLabelOverlapsRegion(region, point, label)) continue;
+          candidates.push({ row, col, score: distance + scoreBias });
+        }
+        if (candidates.length) break;
+      }
+      if (!candidates.length) return null;
+      candidates.sort((a, b) => a.score - b.score);
+      const cell = candidates[0];
+      return { x: (cell.col + 0.5) * CELL, y: (cell.row + 0.5) * CELL };
+    }
+
+    function gateLabelOverlapsRegion(region, point, label) {
+      if (!region.bounds) return false;
+      const padding = 4;
+      const gateRect = {
+        left: region.bounds.colMin * CELL - padding,
+        right: (region.bounds.colMax + 1) * CELL + padding,
+        top: region.bounds.rowMin * CELL - padding,
+        bottom: (region.bounds.rowMax + 1) * CELL + padding,
+      };
+      const labelWidth = CELL * Math.max(2, String(label).length * 0.9);
+      const labelHeight = 8.8;
+      const labelRect = {
+        left: point.x - labelWidth / 2,
+        right: point.x + labelWidth / 2,
+        top: point.y - labelHeight / 2,
+        bottom: point.y + labelHeight / 2,
+      };
+      return !(
+        labelRect.right < gateRect.left ||
+        labelRect.left > gateRect.right ||
+        labelRect.bottom < gateRect.top ||
+        labelRect.top > gateRect.bottom
+      );
+    }
+
+    function regionCellCenter(region) {
+      if (!Array.isArray(region.cells) || region.cells.length === 0) return null;
+      let rowSum = 0;
+      let colSum = 0;
+      for (const cell of region.cells) {
+        rowSum += cell.row;
+        colSum += cell.col;
+      }
+      return {
+        row: Math.round(rowSum / region.cells.length),
+        col: Math.round(colSum / region.cells.length),
+      };
+    }
+
+    function largestCellRectangle(cells, options = {}) {
+      if (!cells.length) return null;
+      let rowMin = Infinity;
+      let rowMax = -Infinity;
+      let colMin = Infinity;
+      let colMax = -Infinity;
+      let rowSum = 0;
+      let colSum = 0;
+      const set = new Set();
+      for (const cell of cells) {
+        rowMin = Math.min(rowMin, cell.row);
+        rowMax = Math.max(rowMax, cell.row);
+        colMin = Math.min(colMin, cell.col);
+        colMax = Math.max(colMax, cell.col);
+        rowSum += cell.row;
+        colSum += cell.col;
+        set.add(cellKey(cell.row, cell.col));
+      }
+      const cols = colMax - colMin + 1;
+      const heights = new Array(cols).fill(0);
+      const candidates = [];
+      for (let row = rowMin; row <= rowMax; row++) {
+        for (let col = colMin; col <= colMax; col++) {
+          const index = col - colMin;
+          heights[index] = set.has(cellKey(row, col)) ? heights[index] + 1 : 0;
+        }
+        const stack = [];
+        for (let i = 0; i <= cols; i++) {
+          const current = i === cols ? 0 : heights[i];
+          while (stack.length && current < heights[stack[stack.length - 1]]) {
+            const height = heights[stack.pop()];
+            const start = stack.length ? stack[stack.length - 1] + 1 : 0;
+            const width = i - start;
+            const area = width * height;
+            candidates.push({
+              area,
+              row: row - height + 1,
+              col: colMin + start,
+              width,
+              height,
+            });
+          }
+          stack.push(i);
+        }
+      }
+      if (!candidates.length) return null;
+      const maxArea = Math.max(...candidates.map((rect) => rect.area));
+      if (options.preferCenter) {
+        const center = {
+          row: rowSum / cells.length,
+          col: colSum / cells.length,
+        };
+        const viable = candidates.filter((rect) => rect.area >= maxArea * 0.35 && rect.width >= 2 && rect.height >= 2);
+        const pool = viable.length ? viable : candidates;
+        pool.sort((a, b) => (
+          rectangleCenterDistance(a, center) - rectangleCenterDistance(b, center) ||
+          b.area - a.area ||
+          b.width - a.width ||
+          b.height - a.height
+        ));
+        return pool[0];
+      }
+      candidates.sort((a, b) => b.area - a.area || b.width - a.width || b.height - a.height);
+      return candidates[0];
+    }
+
+    function rectangleCenterDistance(rect, center) {
+      const row = rect.row + rect.height / 2 - 0.5;
+      const col = rect.col + rect.width / 2 - 0.5;
+      return Math.hypot(row - center.row, col - center.col);
+    }
+
+    function drawFenceEdges(base, cells) {
+      base.save();
+      base.strokeStyle = "rgba(74, 43, 20, 0.46)";
+      base.lineWidth = 0.82;
+      base.lineCap = "round";
+      for (const cell of cells) {
+        const seed = hashString(`fence|${cell.row}|${cell.col}`);
+        const cx = (cell.col + 0.5) * CELL;
+        const cy = (cell.row + 0.5) * CELL;
+        const half = 2.55;
+        const wobble = 0.35;
+        base.beginPath();
+        base.moveTo(cx - half + jitter(seed, wobble), cy - half + jitter(seed + 3, wobble));
+        base.lineTo(cx + half + jitter(seed + 7, wobble), cy + half + jitter(seed + 11, wobble));
+        base.moveTo(cx + half + jitter(seed + 17, wobble), cy - half + jitter(seed + 19, wobble));
+        base.lineTo(cx - half + jitter(seed + 23, wobble), cy + half + jitter(seed + 29, wobble));
+        base.stroke();
+      }
+      base.restore();
+    }
+
+    function drawTerrainBoundary(base, cells, strokeStyle, lineWidth) {
+      const set = new Set(cells.map((cell) => cellKey(cell.row, cell.col)));
+      base.save();
+      base.strokeStyle = strokeStyle;
+      base.lineWidth = lineWidth;
+      base.lineCap = "round";
+      base.lineJoin = "round";
+      for (const cell of cells) {
+        const row = cell.row;
+        const col = cell.col;
+        const x = col * CELL;
+        const y = row * CELL;
+        const seed = hashString(`edge|${row}|${col}`);
+        if (!set.has(cellKey(row - 1, col))) drawWobblyLine(base, x, y, x + CELL, y, seed);
+        if (!set.has(cellKey(row + 1, col))) drawWobblyLine(base, x, y + CELL, x + CELL, y + CELL, seed + 7);
+        if (!set.has(cellKey(row, col - 1))) drawWobblyLine(base, x, y, x, y + CELL, seed + 13);
+        if (!set.has(cellKey(row, col + 1))) drawWobblyLine(base, x + CELL, y, x + CELL, y + CELL, seed + 19);
+      }
+      base.restore();
+    }
+
+    function collectBoundaryRuns(cells) {
+      const set = new Set(cells.map((cell) => cellKey(cell.row, cell.col)));
+      const horizontalMap = new Map();
+      const verticalMap = new Map();
+      for (const cell of cells) {
+        const row = cell.row;
+        const col = cell.col;
+        if (!set.has(cellKey(row - 1, col))) addRunUnit(horizontalMap, row, col);
+        if (!set.has(cellKey(row + 1, col))) addRunUnit(horizontalMap, row + 1, col);
+        if (!set.has(cellKey(row, col - 1))) addRunUnit(verticalMap, col, row);
+        if (!set.has(cellKey(row, col + 1))) addRunUnit(verticalMap, col + 1, row);
+      }
+      return {
+        horizontal: mergeRunUnits(horizontalMap),
+        vertical: mergeRunUnits(verticalMap),
+      };
+    }
+
+    function addRunUnit(map, grid, start) {
+      if (!map.has(grid)) map.set(grid, []);
+      map.get(grid).push(start);
+    }
+
+    function mergeRunUnits(map) {
+      const runs = [];
+      for (const [grid, values] of map.entries()) {
+        values.sort((a, b) => a - b);
+        let start = null;
+        let end = null;
+        for (const value of values) {
+          if (start === null) {
+            start = value;
+            end = value + 1;
+          } else if (value <= end) {
+            end = Math.max(end, value + 1);
+          } else {
+            runs.push({ grid, start, end });
+            start = value;
+            end = value + 1;
+          }
+        }
+        if (start !== null) runs.push({ grid, start, end });
+      }
+      return runs;
+    }
+
+    function drawWobblyLine(base, x1, y1, x2, y2, seed) {
+      const mx = (x1 + x2) / 2 + jitter(seed, 0.8);
+      const my = (y1 + y2) / 2 + jitter(seed + 5, 0.8);
+      base.beginPath();
+      base.moveTo(x1 + jitter(seed + 11, 0.45), y1 + jitter(seed + 17, 0.45));
+      base.quadraticCurveTo(mx, my, x2 + jitter(seed + 23, 0.45), y2 + jitter(seed + 29, 0.45));
+      base.stroke();
+    }
+
+    function indexRegions() {
+      regionById.clear();
+      for (const region of summary.regions || []) {
+        regionById.set(region.id, region);
+      }
+    }
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+      canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const networkRect = elementLayoutSize(socialCanvas);
+      socialCanvas.width = Math.max(1, Math.floor(networkRect.width * dpr));
+      socialCanvas.height = Math.max(1, Math.floor(networkRect.height * dpr));
+      socialCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const attendanceRect = elementLayoutSize(attendanceCanvas);
+      attendanceCanvas.width = Math.max(1, Math.floor(attendanceRect.width * dpr));
+      attendanceCanvas.height = Math.max(1, Math.floor(attendanceRect.height * dpr));
+      attendanceCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (!resize.didFit && summary) {
+        const worldW = summary.size.cols * CELL;
+        const worldH = summary.size.rows * CELL;
+        view.scale = Math.min(rect.width / worldW, rect.height / worldH) * 0.94;
+        view.offsetX = (rect.width - worldW * view.scale) / 2;
+        view.offsetY = (rect.height - worldH * view.scale) / 2;
+        panelBaseScale = view.scale;
+        resize.didFit = true;
+      }
+      updatePanelAnchors();
+      drawTitleUnderline();
+      draw();
+      drawSocialNetwork();
+      renderAverageMetrics();
+      drawCourseAttendance();
+    }
+
+    function drawTitleUnderline() {
+      document.querySelectorAll(".title-underline, .section-divider").forEach(drawPanelLine);
+    }
+
+    function drawPanelLine(lineCanvas) {
+      const rect = lineCanvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const dpr = window.devicePixelRatio || 1;
+      const width = Math.max(1, Math.floor(rect.width * dpr));
+      const height = Math.max(1, Math.floor(rect.height * dpr));
+      if (lineCanvas.width !== width || lineCanvas.height !== height) {
+        lineCanvas.width = width;
+        lineCanvas.height = height;
+      }
+      const lineCtx = lineCanvas.getContext("2d");
+      lineCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      lineCtx.clearRect(0, 0, rect.width, rect.height);
+      lineCtx.save();
+      lineCtx.strokeStyle = "rgba(74, 43, 20, 0.68)";
+      lineCtx.lineWidth = 0.48;
+      lineCtx.lineCap = "round";
+      const y = rect.height * 0.55;
+      lineCtx.translate(rect.width / 2, y);
+      lineCtx.beginPath();
+      lineCtx.moveTo(-rect.width / 2 + 2, 0);
+      lineCtx.lineTo(rect.width / 2 - 2, 0);
+      lineCtx.stroke();
+      lineCtx.restore();
+    }
+
+    function updatePanelAnchors() {
+      if (!summary || !appRoot || !leftPanel || !rightPanel) return;
+      const appRect = appRoot.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+      const worldW = summary.size.cols * CELL;
+      const worldH = summary.size.rows * CELL;
+      if (!panelBaseScale || panelBaseScale <= 0) panelBaseScale = view.scale || 1;
+      const panelScale = Math.max(0.001, view.scale / panelBaseScale);
+      const mapLeft = canvasRect.left - appRect.left + view.offsetX;
+      const mapTop = canvasRect.top - appRect.top + view.offsetY;
+      const mapHeight = worldH * view.scale;
+      const mapRight = mapLeft + worldW * view.scale;
+      const leftWidth = leftPanel.offsetWidth || 340;
+      const leftX = mapLeft - leftWidth * panelScale;
+      const rightX = mapRight;
+      const panelLayoutHeight = mapHeight / panelScale;
+      appRoot.style.setProperty("--left-panel-x", `${leftX.toFixed(1)}px`);
+      appRoot.style.setProperty("--right-panel-x", `${rightX.toFixed(1)}px`);
+      appRoot.style.setProperty("--panel-y", `${mapTop.toFixed(1)}px`);
+      appRoot.style.setProperty("--panel-height", `${panelLayoutHeight.toFixed(1)}px`);
+      appRoot.style.setProperty("--panel-scale", `${panelScale.toFixed(4)}`);
+      appRoot.dataset.panelsReady = "true";
+    }
+
+    function elementLayoutSize(element) {
+      return {
+        width: element.clientWidth || element.offsetWidth || 1,
+        height: element.clientHeight || element.offsetHeight || 1,
+      };
+    }
+
+    function eventToLayoutPoint(event, element) {
+      const rect = element.getBoundingClientRect();
+      const layout = elementLayoutSize(element);
+      const scaleX = rect.width ? layout.width / rect.width : 1;
+      const scaleY = rect.height ? layout.height / rect.height : 1;
+      return {
+        x: (event.clientX - rect.left) * scaleX,
+        y: (event.clientY - rect.top) * scaleY,
+      };
+    }
+
+    function animationLoop(now) {
+      draw(now);
+      requestAnimationFrame(animationLoop);
+    }
+
+    function updatePanel() {
+      if (!sim) return;
+      document.getElementById("playBtn").textContent = sim.server.playing ? "Pause" : "Play";
+      document.getElementById("speedBtn").textContent = `${sim.server.speed}x`;
+      const simRows = [
+        ["time", sim.time, "day", sim.day],
+        ["model", sim.server.model, "agents", sim.agent_count],
+        ["step", sim.step, "sec/step", sim.seconds_per_step],
+        ["speed", `${sim.server.speed}x`, "interval", `${sim.server.sync_interval_seconds.toFixed(2)}s`],
+      ];
+      document.getElementById("simFacts").innerHTML = simRows.map(row =>
+        `<div class="sim-row"><span class="sim-key">${row[0]}</span><span class="sim-val">${row[1]}</span><span class="sim-key">${row[2]}</span><span class="sim-val">${row[3]}</span></div>`
+      ).join("");
+      document.getElementById("stateCounts").innerHTML = Object.entries(sim.state_counts)
+        .map(([key, value]) => `<div class="count-row"><span>${key}</span><strong>${value}</strong></div>`)
+        .join("");
+      const selected = selectedId ? findAgent(selectedId) : null;
+      updateSubmapControls();
+      renderAverageMetrics();
+      drawCourseAttendance();
+      renderNetworkSummary();
+      drawSocialNetwork();
+    }
+
+    function setFacts(id, rows) {
+      document.getElementById(id).innerHTML = rows.map(([key, value]) => `<dt>${key}</dt><dd>${value}</dd>`).join("");
+    }
+
+    function appendMetricsSnapshot(simData) {
+      const last = metricsHistory.length > 0 ? metricsHistory[metricsHistory.length - 1] : null;
+      const elapsed = metricSampleElapsedSeconds(simData, simData.seconds_per_step);
+      if (elapsed === null) return;
+      if (last && (Number(simData.step) <= Number(last.step) || elapsed <= Number(last.elapsed_seconds))) return;
+      const m = simData.average_metrics || {};
+      metricsHistory.push({
+        step: simData.step,
+        elapsed_seconds: elapsed,
+        t: elapsed * 1000,
+        energy: clamp01(Number(m.energy) || 0),
+        satiety: clamp01(Number(m.satiety) || 0),
+        physical_health: clamp01(Number(m.physical_health) || 0),
+        mental_health: clamp01(Number(m.mental_health) || 0),
+        wellbeing: clamp01(Number(m.wellbeing) || 0),
+        intrinsic_satisfaction: clamp01(Number(m.intrinsic_satisfaction) || 0),
+        extrinsic_satisfaction: clamp01(Number(m.extrinsic_satisfaction) || 0),
+      });
+    }
+
+    function renderAverageMetrics() {
+      var tabsEl = document.getElementById("metricsTabs");
+      var stageEl = document.getElementById("metricsStage");
+      if (!tabsEl || !stageEl) return;
+      if (!tabsEl.firstChild) {
+        tabsEl.innerHTML = AVERAGE_METRIC_DEFS.map(function(def) {
+          return '<button type="button" class="metrics-tab" data-metric="' + def.key + '">' +
+            def.label + '</button>';
+        }).join("");
+        tabsEl.addEventListener("click", function(event) {
+          var btn = event.target.closest("button[data-metric]");
+          if (!btn) return;
+          selectMetric(btn.dataset.metric);
+        });
+        // Bind toggle click on the section heading
+        var heading = document.getElementById("metricsHeading");
+        if (heading) {
+          heading.style.cursor = "pointer";
+          heading.title = "Click to toggle between 10min and all-time view";
+          heading.addEventListener("click", toggleMetricsView);
+        }
+      }
+      // Build one pane per metric (transparent stage; only the active one is shown)
+      if (!stageEl.firstChild) {
+        stageEl.innerHTML = AVERAGE_METRIC_DEFS.map(function(def) {
+          return '<div class="metrics-chart-pane" data-metric="' + def.key + '">' +
+            '<div class="chart-area"><canvas data-metric="' + def.key + '"></canvas></div>' +
+            '<span class="metrics-chart-value" id="mval-' + def.key + '">0.000</span>' +
+          '</div>';
+        }).join("");
+      }
+      // Reflect the active selection in the tab styling
+      var tabBtns = tabsEl.querySelectorAll("button[data-metric]");
+      for (var t = 0; t < tabBtns.length; t++) {
+        tabBtns[t].classList.toggle("active", tabBtns[t].dataset.metric === activeMetricKey);
+      }
+      var panes = stageEl.querySelectorAll(".metrics-chart-pane");
+      for (var p = 0; p < panes.length; p++) {
+        var isOn = panes[p].dataset.metric === activeMetricKey;
+        panes[p].classList.toggle("visible", isOn);
+      }
+      // Update heading text to reflect current mode
+      updateMetricsHeading();
+      if (!sim) return;
+      // Update the value label and chart for the active metric
+      var activeDef = AVERAGE_METRIC_DEFS.find(function(d) { return d.key === activeMetricKey; })
+        || AVERAGE_METRIC_DEFS[0];
+      var metrics = sim.average_metrics || {};
+      var val = clamp01(Number(metrics[activeDef.key]) || 0);
+      var valEl = document.getElementById("mval-" + activeDef.key);
+      if (valEl) valEl.textContent = val.toFixed(3);
+      var canvas = stageEl.querySelector('canvas[data-metric="' + activeDef.key + '"]');
+      if (canvas) drawMetricChart(canvas, activeDef.key, !!activeDef.warning);
+    }
+
+    function selectMetric(key) {
+      if (!AVERAGE_METRIC_DEFS.some(function(d) { return d.key === key; })) return;
+      if (key === activeMetricKey) return;
+      activeMetricKey = key;
+      renderAverageMetrics();
+    }
+
+    function updateMetricsHeading() {
+      var heading = document.getElementById("metricsHeading");
+      if (!heading) return;
+      if (metricsShowAll) {
+        var total = Math.round(metricsHistorySpanMs() / 1000);
+        heading.textContent = "Average Metrics (All - " + total + "s)";
+      } else {
+        heading.textContent = "Average Metrics (10min)";
+      }
+    }
+
+    function toggleMetricsView() {
+      metricsShowAll = !metricsShowAll;
+      if (metricsShowAll) {
+        // Expand to show all data: target window = total elapsed time
+        var totalMs = metricsHistorySpanMs();
+        metricsTargetWindow = Math.max(totalMs + 5000, METRICS_DEFAULT_WINDOW);
+      } else {
+        // Back to 10-minute default
+        metricsTargetWindow = METRICS_DEFAULT_WINDOW;
+      }
+      startMetricsAnim();
+    }
+
+    function startMetricsAnim() {
+      if (metricsAnimFrame) cancelAnimationFrame(metricsAnimFrame);
+      function step() {
+        var diff = metricsTargetWindow - metricsTimeWindow;
+        if (Math.abs(diff) < 100) {
+          metricsTimeWindow = metricsTargetWindow;
+          metricsAnimFrame = null;
+          renderAverageMetrics();
+          return;
+        }
+        // Ease-out: move 22% closer each frame for a smooth 500ms transition.
+        metricsTimeWindow += diff * 0.22;
+        renderAverageMetrics();
+        metricsAnimFrame = requestAnimationFrame(step);
+      }
+      metricsAnimFrame = requestAnimationFrame(step);
+    }
+
+    function visibleMetrics() {
+      if (!metricsHistory.length) return [];
+      var now = metricsHistory.length ? Number(metricsHistory[metricsHistory.length - 1].t) : 0;
+      if (metricsShowAll) {
+        return metricsHistory;
+      }
+      var cutoff = now - metricsTimeWindow;
+      var result = [];
+      for (var i = 0; i < metricsHistory.length; i++) {
+        if (metricsHistory[i].t >= cutoff) result.push(metricsHistory[i]);
+      }
+      // Always include at least the last 2 points so the chart is never empty
+      if (result.length < 2 && metricsHistory.length >= 2) {
+        result = metricsHistory.slice(-2);
+      }
+      return result;
+    }
+
+    function drawMetricChart(canvas, metricKey, isWarning) {
+      var wrap = canvas.parentElement;
+      var dpr = window.devicePixelRatio || 1;
+      var cssW = wrap.offsetWidth;
+      var cssH = wrap.offsetHeight;
+      if (!cssW || !cssH) return;
+      var bufW = Math.max(1, Math.floor(cssW * dpr));
+      var bufH = Math.max(1, Math.floor(cssH * dpr));
+      if (canvas.width !== bufW || canvas.height !== bufH) {
+        canvas.width = bufW;
+        canvas.height = bufH;
+      }
+      var ctx = canvas.getContext("2d");
+      var w = canvas.width;
+      var h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+      ctx.save();
+      ctx.scale(dpr, dpr);
+
+      var pad = { top: 3, bottom: 3, left: 2, right: 2 };
+      var plotW = cssW - pad.left - pad.right;
+      var plotH = cssH - pad.top - pad.bottom;
+      if (plotW <= 0 || plotH <= 0) { ctx.restore(); return; }
+
+      var visible = visibleMetrics();
+      if (visible.length < 2) {
+        var currentVal = clamp01(Number((sim.average_metrics || {})[metricKey]) || 0);
+        var dotY = cssH - pad.bottom - currentVal * plotH;
+        ctx.fillStyle = isWarning ? "#7a5630" : "#6b2f1a";
+        ctx.beginPath();
+        ctx.arc(pad.left + plotW / 2, dotY, 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        return;
+      }
+
+      var tMin = visible[0].t;
+      var tMax = visible[visible.length - 1].t;
+      var tSpan = tMax - tMin || 1;
+
+      function toX(t) { return pad.left + ((t - tMin) / tSpan) * plotW; }
+      function toY(val) { return cssH - pad.bottom - clamp01(val) * plotH; }
+
+      // Fill area under line
+      ctx.beginPath();
+      ctx.moveTo(pad.left, cssH - pad.bottom);
+      for (var i = 0; i < visible.length; i++) {
+        ctx.lineTo(toX(visible[i].t), toY(visible[i][metricKey]));
+      }
+      ctx.lineTo(pad.left + plotW, cssH - pad.bottom);
+      ctx.closePath();
+      ctx.fillStyle = isWarning ? "rgba(122, 86, 48, 0.08)" : "rgba(74, 43, 20, 0.07)";
+      ctx.fill();
+
+      // Main line
+      ctx.beginPath();
+      ctx.strokeStyle = isWarning ? "#7a5630" : "#6b2f1a";
+      ctx.lineWidth = 1.3;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      for (var i = 0; i < visible.length; i++) {
+        var lx = toX(visible[i].t);
+        var ly = toY(visible[i][metricKey]);
+        if (i === 0) ctx.moveTo(lx, ly);
+        else ctx.lineTo(lx, ly);
+      }
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function drawCourseAttendance() {
+      if (!attendanceCanvas || !attendanceCtx || !sim) return;
+      var rect = elementLayoutSize(attendanceCanvas);
+      attendanceCtx.clearRect(0, 0, rect.width, rect.height);
+      var slots = sim.course_slot_attendance;
+      if (!slots || !slots.length) {
+        attendanceCtx.fillStyle = "#9ca3a8";
+        attendanceCtx.font = "13px system-ui, -apple-system, Segoe UI, sans-serif";
+        attendanceCtx.textAlign = "center";
+        attendanceCtx.textBaseline = "middle";
+        attendanceCtx.fillText("No course data yet", rect.width / 2, rect.height / 2);
+        return;
+      }
+
+      var pad = { top: 22, bottom: 32, left: 18, right: 14 };
+      var plotW = rect.width - pad.left - pad.right;
+      var plotH = rect.height - pad.top - pad.bottom;
+      if (plotW <= 0 || plotH <= 0) return;
+
+      var groupCount = slots.length;
+      var groupGap = 12;
+      var groupW = (plotW - groupGap * (groupCount - 1)) / groupCount;
+      var barGap = 3;
+      var barW = Math.max(2, (groupW - barGap) / 2);
+      var maxVal = 0;
+      for (var s = 0; s < slots.length; s++) {
+        maxVal = Math.max(maxVal, slots[s].enrolled || 0, slots[s].attended || 0);
+      }
+      maxVal = Math.max(1, Math.ceil(maxVal * 1.18));
+
+      attendanceCtx.save();
+
+      // Draw horizontal grid lines
+      attendanceCtx.strokeStyle = "rgba(255,255,255,0.06)";
+      attendanceCtx.lineWidth = 0.6;
+      for (var g = 0; g <= 3; g++) {
+        var gy = pad.top + (g / 3) * plotH;
+        attendanceCtx.beginPath();
+        attendanceCtx.moveTo(pad.left, gy);
+        attendanceCtx.lineTo(rect.width - pad.right, gy);
+        attendanceCtx.stroke();
+      }
+
+      // Draw bars
+      for (var s = 0; s < slots.length; s++) {
+        var gx = pad.left + s * (groupW + groupGap);
+
+        // Enrolled bar (lighter brown)
+        var enrolledH = maxVal > 0 ? ((slots[s].enrolled || 0) / maxVal) * plotH : 0;
+        attendanceCtx.fillStyle = "#6a9cc4";
+        attendanceCtx.fillRect(gx, pad.top + plotH - enrolledH, barW, Math.max(0, enrolledH));
+
+        // Attended bar (darker brown)
+        var attendedH = maxVal > 0 ? ((slots[s].attended || 0) / maxVal) * plotH : 0;
+        attendanceCtx.fillStyle = "#c4905c";
+        attendanceCtx.fillRect(gx + barW + barGap, pad.top + plotH - attendedH, barW, Math.max(0, attendedH));
+
+        // Slot label below
+        attendanceCtx.fillStyle = "#e8e6e0";
+        attendanceCtx.font = "9px system-ui, -apple-system, Segoe UI, sans-serif";
+        attendanceCtx.textAlign = "center";
+        attendanceCtx.textBaseline = "top";
+        var label = COURSE_SLOT_LABELS[s].start;
+        attendanceCtx.fillText(label, gx + groupW / 2, pad.top + plotH + 6);
+
+        // Enrolled count above bar
+        attendanceCtx.fillStyle = "#8ab4d8";
+        attendanceCtx.font = "bold 9px system-ui, -apple-system, Segoe UI, sans-serif";
+        attendanceCtx.fillText(slots[s].enrolled || 0, gx + barW / 2, pad.top + plotH - enrolledH - 12);
+
+        // Attended count above bar
+        attendanceCtx.fillStyle = "#e8c97a";
+        attendanceCtx.fillText(slots[s].attended || 0, gx + barW + barGap + barW / 2, pad.top + plotH - attendedH - 12);
+      }
+
+      attendanceCtx.restore();
+    }
+
+    function renderNetworkSummary() {
+      if (!sim) return;
+      const network = sim.social_network || { nodes: [], edges: [], tier_counts: {} };
+      const tiers = network.tier_counts || {};
+      document.getElementById("networkSummary").innerHTML = [
+        ["Nodes", (network.nodes || []).length],
+        ["Edges", (network.edges || []).length],
+        ["Intimate", tiers.intimate || 0],
+        ["Friends", tiers.friend || 0],
+      ].map(([key, value]) => `<div><span>${key}</span><br><strong>${value}</strong></div>`).join("");
+    }
+
+    function drawSocialNetwork() {
+      if (!socialCanvas || !socialCtx || !sim) return;
+      const rect = elementLayoutSize(socialCanvas);
+      socialCtx.clearRect(0, 0, rect.width, rect.height);
+      const network = sim.social_network || { nodes: [], edges: [] };
+      const nodes = network.nodes || [];
+      const edges = network.edges || [];
+      if (!nodes.length || !edges.length) {
+        socialNodePositions.clear();
+        socialCtx.fillStyle = "#9ca3a8";
+        socialCtx.font = "13px system-ui, -apple-system, Segoe UI, sans-serif";
+        socialCtx.textAlign = "center";
+        socialCtx.textBaseline = "middle";
+        socialCtx.fillText("No active social ties yet", rect.width / 2, rect.height / 2);
+        return;
+      }
+
+      layoutSocialNodes(nodes, rect.width, rect.height);
+      socialCtx.save();
+      socialCtx.lineCap = "round";
+      for (const edge of edges) {
+        const source = socialNodePositions.get(String(edge.source));
+        const target = socialNodePositions.get(String(edge.target));
+        if (!source || !target) continue;
+        const intimacy = clamp01(Number(edge.intimacy || 0));
+        const edgeStyle = socialEdgeStyle(edge.tier, intimacy);
+        const isHighlighted = selectedId !== null && selectedId !== undefined
+          && (String(edge.source) === String(selectedId) || String(edge.target) === String(selectedId));
+        socialCtx.globalAlpha = isHighlighted ? Math.min(1, edgeStyle.alpha * 2.4) : edgeStyle.alpha;
+        socialCtx.strokeStyle = isHighlighted ? agentColors.selected : edgeStyle.color;
+        socialCtx.lineWidth = isHighlighted ? Math.max(1.1, edgeStyle.width * 1.35) : edgeStyle.width;
+        if (isHighlighted) {
+          socialCtx.shadowColor = "rgba(200, 180, 150, 0.28)";
+          socialCtx.shadowBlur = 7;
+        }
+        socialCtx.beginPath();
+        socialCtx.moveTo(source.x, source.y);
+        socialCtx.lineTo(target.x, target.y);
+        socialCtx.stroke();
+        socialCtx.shadowColor = "transparent";
+        socialCtx.shadowBlur = 0;
+      }
+      const connectedNodeIds = new Set();
+      if (selectedId !== null && selectedId !== undefined) {
+        for (const edge of edges) {
+          const src = String(edge.source);
+          const tgt = String(edge.target);
+          if (src === String(selectedId)) connectedNodeIds.add(tgt);
+          if (tgt === String(selectedId)) connectedNodeIds.add(src);
+        }
+      }
+
+      socialCtx.globalAlpha = 1;
+
+      for (const node of nodes) {
+        const pos = socialNodePositions.get(String(node.id));
+        if (!pos) continue;
+        const agent = findAgent(node.id);
+        const selected = String(node.id) === String(selectedId);
+        const connected = connectedNodeIds.has(String(node.id));
+        const hovered = String(node.id) === String(hoveredNetworkNodeId);
+        const radius = selected ? 5.8 : hovered ? 5.3 : connected ? 4.9 : 4.0;
+        if (selected || connected) {
+          const glowRadius = selected ? 11.5 : 9.5;
+          const gradient = socialCtx.createRadialGradient(pos.x, pos.y, radius, pos.x, pos.y, glowRadius);
+          gradient.addColorStop(0, selected ? "rgba(200, 180, 150, 0.28)" : "rgba(200, 180, 150, 0.18)");
+          gradient.addColorStop(1, "rgba(200, 180, 150, 0)");
+          socialCtx.beginPath();
+          socialCtx.globalAlpha = 1;
+          socialCtx.fillStyle = gradient;
+          socialCtx.arc(pos.x, pos.y, glowRadius, 0, Math.PI * 2);
+          socialCtx.fill();
+        }
+        socialCtx.beginPath();
+        socialCtx.fillStyle = selected ? agentColors.selected : "#c9a87c";
+        socialCtx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+        socialCtx.fill();
+        if (agent && agentView(agent).phase === "MOVING") {
+          socialCtx.beginPath();
+          socialCtx.strokeStyle = "#2f7d5b";
+          socialCtx.lineWidth = 1.2;
+          socialCtx.arc(pos.x, pos.y, radius + 2.4, 0, Math.PI * 2);
+          socialCtx.stroke();
+        }
+      }
+      socialCtx.restore();
+    }
+
+    function socialEdgeStyle(tier, intimacy) {
+      if (tier === "intimate") {
+        return {
+          alpha: 0.30 + intimacy * 0.20,
+          width: 1.4 + intimacy * 2.2,
+          color: "#c9a87c",
+        };
+      }
+      if (tier === "friend") {
+        return {
+          alpha: 0.035 + intimacy * 0.075,
+          width: 0.35 + intimacy * 0.85,
+          color: "#6f7452",
+        };
+      }
+      if (tier === "acquaintance") {
+        return {
+          alpha: 0.018 + intimacy * 0.035,
+          width: 0.25 + intimacy * 0.45,
+          color: "#7f8465",
+        };
+      }
+      return {
+        alpha: 0.01,
+        width: 0.2,
+        color: "#969a82",
+      };
+    }
+
+    function layoutSocialNodes(nodes, width, height) {
+      const sorted = [...nodes].sort((a, b) => Number(a.id) - Number(b.id));
+      const cx = width / 2;
+      const cy = height / 2;
+      const radius = Math.max(24, Math.min(width, height) * 0.39);
+      socialNodePositions.clear();
+      sorted.forEach((node, index) => {
+        const angle = -Math.PI / 2 + (Math.PI * 2 * index) / Math.max(1, sorted.length);
+        const degree = Math.max(0, Number(node.degree || 0));
+        const inward = Math.min(22, degree * 2.5);
+        socialNodePositions.set(String(node.id), {
+          x: cx + Math.cos(angle) * (radius - inward),
+          y: cy + Math.sin(angle) * (radius - inward),
+        });
+      });
+    }
+
+    function nearestSocialNode(event) {
+      const point = eventToLayoutPoint(event, socialCanvas);
+      const x = point.x;
+      const y = point.y;
+      let bestId = null;
+      let bestDistance = Infinity;
+      for (const [id, pos] of socialNodePositions.entries()) {
+        const distance = Math.hypot(pos.x - x, pos.y - y);
+        if (distance < bestDistance) {
+          bestId = id;
+          bestDistance = distance;
+        }
+      }
+      return bestDistance <= 12 ? bestId : null;
+    }
+
+    function showNetworkTooltip(agentId, event) {
+      if (!agentId) {
+        tooltip.style.display = "none";
+        return;
+      }
+      const agent = findAgent(agentId);
+      if (!agent) {
+        tooltip.style.display = "none";
+        return;
+      }
+      const view = agentView(agent);
+      tooltip.innerHTML =
+        '<strong>' + (view.name || ('Agent ' + view.id)) + '</strong>' +
+        '<br>state: ' + view.phase +
+        '<br>activity: ' + (view.current_action || view.intention || "none") +
+        '<br>energy: ' + view.energy.toFixed(3) +
+        '<br>satiety: ' + view.satiety.toFixed(3) +
+        '<br>physical_health: ' + view.physical_health.toFixed(3) +
+        '<br>mental_health: ' + view.mental_health.toFixed(3) +
+        '<br>wellbeing: ' + view.wellbeing.toFixed(3);
+      tooltip.style.left = `${event.clientX + 14}px`;
+      tooltip.style.top = `${event.clientY + 14}px`;
+      tooltip.style.display = "block";
+    }
+
+    function draw(now = performance.now()) {
+      if (!summary || !sim || !baseCanvas) return;
+      updatePanelAnchors();
+      const rect = canvas.getBoundingClientRect();
+      ctx.save();
+      ctx.setTransform(window.devicePixelRatio || 1, 0, 0, window.devicePixelRatio || 1, 0, 0);
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      ctx.translate(view.offsetX, view.offsetY);
+      ctx.scale(view.scale, view.scale);
+      const panelExtents = currentPanelExtents();
+      drawContinuousPaperBase(panelExtents);
+      updateNameFades();
+      drawMapContentScene(now);
+      drawExtendedParchmentBorder(panelExtents);
+      ctx.restore();
+    }
+
+    function drawMapContentScene(now = performance.now()) {
+      if (!submapTransition) {
+        drawMapContent(activeSubmapId, () => 1, 1, now);
+        return;
+      }
+      const elapsed = now - submapTransition.startedAt;
+      const progress = clamp01(elapsed / submapTransition.duration);
+      if (progress >= 1) {
+        const targetId = submapTransition.toId;
+        submapTransition = null;
+        activeSubmapId = targetId;
+        drawMapContent(activeSubmapId, () => 1, 1, now);
+        return;
+      }
+      drawMapContent(
+        submapTransition.fromId,
+        (layerId) => submapLayerAlpha(layerId, progress, "out"),
+        submapLayerAlpha("overlays", progress, "out"),
+        now
+      );
+      drawMapContent(
+        submapTransition.toId,
+        (layerId) => submapLayerAlpha(layerId, progress, "in"),
+        submapLayerAlpha("overlays", progress, "in"),
+        now
+      );
+    }
+
+    function drawMapContent(submapId, layerAlphaFor, overlayAlpha, now = performance.now()) {
+      const bounds = submapWorldBounds(submapId);
+      const layout = contentLayoutForBounds(bounds);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, layout.worldW, layout.worldH);
+      ctx.clip();
+      ctx.translate(layout.offsetX, layout.offsetY);
+      ctx.scale(layout.scale, layout.scale);
+      ctx.translate(-bounds.left, -bounds.top);
+      for (const { id } of MAP_LAYER_DEFS) {
+        if (id === "paperLayer") continue;
+        const state = mapLayerState[id];
+        const layer = mapLayers?.[id];
+        if (!state?.visible || !layer) continue;
+        const alpha = clamp01(layerAlphaFor(id));
+        if (alpha <= 0.01) continue;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.drawImage(layer.canvas, 0, 0);
+        ctx.restore();
+      }
+      if (overlayAlpha > 0.01) {
+        drawSelectedPath(overlayAlpha);
+        if (drawAgentNamesToLayer(now)) {
+          ctx.save();
+          ctx.globalAlpha = clamp01(overlayAlpha);
+          ctx.drawImage(agentNameLayer.canvas, 0, 0, agentNameLayer.width, agentNameLayer.height);
+          ctx.restore();
+        }
+        drawAgents(now, overlayAlpha);
+      }
+      ctx.restore();
+    }
+
+    function submapLayerAlpha(layerId, progress, phase) {
+      const timing = MAP_LAYER_TRANSITION[layerId] || MAP_LAYER_TRANSITION.terrainLayer;
+      if (phase === "out") {
+        return 1 - smoothstep(timing.outStart, timing.outStart + 0.30, progress);
+      }
+      return smoothstep(timing.inStart, timing.inStart + 0.30, progress);
+    }
+
+    function smoothstep(edge0, edge1, value) {
+      if (edge0 === edge1) return value >= edge1 ? 1 : 0;
+      const t = clamp01((value - edge0) / (edge1 - edge0));
+      return t * t * (3 - 2 * t);
+    }
+
+    function submapWorldBounds(submapId) {
+      const worldW = summary.size.cols * CELL;
+      const worldH = summary.size.rows * CELL;
+      const submap = SUBMAP_DEFS.find((item) => item.id === submapId) || SUBMAP_DEFS[0];
+      if (!submap.bounds) {
+        return { left: 0, top: 0, right: worldW, bottom: worldH, width: worldW, height: worldH };
+      }
+      const pad = 0.018;
+      const left = clamp01(submap.bounds.left - pad) * worldW;
+      const top = clamp01(submap.bounds.top - pad) * worldH;
+      const right = clamp01(submap.bounds.right + pad) * worldW;
+      const bottom = clamp01(submap.bounds.bottom + pad) * worldH;
+      return {
+        left,
+        top,
+        right,
+        bottom,
+        width: Math.max(1, right - left),
+        height: Math.max(1, bottom - top),
+      };
+    }
+
+    function contentLayoutForBounds(bounds) {
+      const worldW = summary.size.cols * CELL;
+      const worldH = summary.size.rows * CELL;
+      if (bounds.left === 0 && bounds.top === 0 && bounds.width === worldW && bounds.height === worldH) {
+        return { worldW, worldH, scale: 1, offsetX: 0, offsetY: 0 };
+      }
+      const scale = Math.max(worldW / bounds.width, worldH / bounds.height);
+      return {
+        worldW,
+        worldH,
+        scale,
+        offsetX: (worldW - bounds.width * scale) / 2,
+        offsetY: (worldH - bounds.height * scale) / 2,
+      };
+    }
+
+    function currentPanelExtents() {
+      if (!summary || !panelBaseScale || !leftPanel || !rightPanel) return null;
+      const worldW = summary.size.cols * CELL;
+      const worldH = summary.size.rows * CELL;
+      const leftWorldW = Math.max(1, Math.ceil((leftPanel.offsetWidth || 340) / panelBaseScale));
+      const rightWorldW = Math.max(1, Math.ceil((rightPanel.offsetWidth || 340) / panelBaseScale));
+      return { worldW, worldH, leftWorldW, rightWorldW };
+    }
+
+    function drawContinuousPaperBase(panelExtents) {
+      if (!panelExtents) return null;
+      const { worldW, worldH, leftWorldW, rightWorldW } = panelExtents;
+      if (mapLayerState.paperLayer?.visible) {
+        const paperKey = `${leftWorldW}x${worldW}x${rightWorldW}x${worldH}x${paperTextureReady ? "texture" : "flat"}`;
+        if (!continuousPaperBase || continuousPaperBase.key !== paperKey) {
+          const canvas = document.createElement("canvas");
+          canvas.width = leftWorldW + worldW + rightWorldW;
+          canvas.height = worldH;
+          const paperCtx = canvas.getContext("2d");
+          fillParchment(paperCtx, 0, 0, canvas.width, canvas.height);
+          continuousPaperBase = { key: paperKey, canvas };
+        }
+        ctx.drawImage(continuousPaperBase.canvas, -leftWorldW, 0);
+      }
+      return panelExtents;
+    }
+
+    function drawExtendedParchmentBorder(panelExtents) {
+      if (!panelExtents || !mapLayerState.fenceBorderLayer?.visible) return;
+      const { worldW, worldH, leftWorldW, rightWorldW } = panelExtents;
+      const left = -leftWorldW;
+      const right = worldW + rightWorldW;
+      ctx.save();
+      const edge = 5;
+      ctx.strokeStyle = "rgba(74, 43, 20, 0.58)";
+      ctx.lineWidth = 4.5;
+      drawWobblyLine(ctx, left + edge, edge, right - edge, edge, 9101);
+      drawWobblyLine(ctx, right - edge, edge, right - edge, worldH - edge, 9107);
+      drawWobblyLine(ctx, right - edge, worldH - edge, left + edge, worldH - edge, 9113);
+      drawWobblyLine(ctx, left + edge, worldH - edge, left + edge, edge, 9119);
+      ctx.restore();
+    }
+
+    function drawSelectedPath(opacity = 1) {
+      const agent = selectedId ? findAgent(selectedId) : null;
+      if (!agent) return;
+      const agentDisplay = agentView(agent);
+      const path = routeDisplayPathForView(agentDisplay);
+      if (!path || path.length === 0) return;
+      const isCurrent = agentDisplay.phase === "MOVING";
+      ctx.save();
+      ctx.globalAlpha = clamp01(opacity);
+      ctx.strokeStyle = isCurrent ? "rgba(74, 43, 20, 0.62)" : "rgba(74, 43, 20, 0.42)";
+      ctx.lineWidth = CELL * 0.2;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.setLineDash(isCurrent ? [CELL * 0.75, CELL * 0.45] : [CELL * 0.5, CELL * 0.7]);
+      ctx.beginPath();
+      path.forEach((cell, index) => {
+        const x = cell.col * CELL + CELL / 2;
+        const y = cell.row * CELL + CELL / 2;
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+
+    function drawAgentShape(ctx, x, y, size, shape) {
+      ctx.beginPath();
+      if (shape === "female") {
+        // 菱形
+        ctx.moveTo(x, y - size);
+        ctx.lineTo(x + size, y);
+        ctx.lineTo(x, y + size);
+        ctx.lineTo(x - size, y);
+        ctx.closePath();
+      } else {
+        // 方形 (默认 male)
+        ctx.rect(x - size, y - size, size * 2, size * 2);
+      }
+    }
+
+    function drawAgents(now = performance.now(), opacity = 1) {
+      const baseOpacity = clamp01(opacity);
+      for (const agent of sim.agents || []) {
+        const point = agentRenderPoint(agent, now);
+        const x = point.x;
+        const y = point.y;
+        const selected = agent.id === selectedId;
+        const moving = isMovingAgent(agent, now);
+        const drawingRouteFootprints = isRouteFootprintAgent(agent, now);
+        const radius = selected ? 4.0 : 3.0;
+        const gender = (agent.profile && agent.profile.gender) || "male";
+        if (drawingRouteFootprints) drawAgentFootprints(agent, point, baseOpacity);
+        if (moving) {
+          const glowSize = 8.4;
+          drawAgentShape(ctx, x, y, glowSize, gender);
+          ctx.globalAlpha = baseOpacity;
+          ctx.fillStyle = "rgba(107, 47, 26, 0.12)";
+          ctx.fill();
+        }
+        drawAgentShape(ctx, x, y, radius, gender);
+        ctx.globalAlpha = baseOpacity * (moving ? 1 : 0.62);
+        ctx.fillStyle = agentColors.base;
+        ctx.fill();
+        ctx.globalAlpha = baseOpacity;
+        if (selected) {
+          ctx.beginPath();
+          ctx.strokeStyle = agentColors.selected;
+          ctx.lineWidth = 1.4;
+          ctx.arc(x, y, 6.0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function drawAgentNamesToLayer(now = performance.now()) {
+      if (!agentNameLayer || !sim) return false;
+      const nameCtx = agentNameLayer.ctx;
+      nameCtx.clearRect(0, 0, agentNameLayer.width, agentNameLayer.height);
+      let drewName = false;
+      for (const agent of sim.agents || []) {
+        const nameAlpha = nameFadeAlphas.get(agent.id) || 0;
+        if (nameAlpha <= 0.01) continue;
+        const view = agentView(agent);
+        const displayName = view.name || ("Agent " + view.id);
+        const point = agentRenderPoint(agent, now);
+        const radius = agent.id === selectedId ? 4.0 : 3.0;
+        const labelSprite = agentNameSprite(displayName);
+        const labelX = point.x + radius + 2;
+        const labelY = point.y + radius + 5 - labelSprite.baseline;
+        nameCtx.save();
+        nameCtx.globalAlpha = nameAlpha;
+        nameCtx.drawImage(labelSprite.canvas, labelX, labelY, labelSprite.width, labelSprite.height);
+        nameCtx.restore();
+        drewName = true;
+      }
+      return drewName;
+    }
+
+    function agentNameSprite(displayName) {
+      const font = '7.8px "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive';
+      const key = `${font}|${displayName}`;
+      const cached = agentNameSprites.get(key);
+      if (cached) return cached;
+
+      const measureCanvas = document.createElement("canvas");
+      const measureCtx = measureCanvas.getContext("2d");
+      measureCtx.font = font;
+      const metrics = measureCtx.measureText(displayName);
+      const padding = 2;
+      const ascent = Math.ceil(metrics.actualBoundingBoxAscent || 8);
+      const descent = Math.ceil(metrics.actualBoundingBoxDescent || 3);
+      const baseline = padding + ascent;
+      const width = Math.max(1, Math.ceil(metrics.width + padding * 2));
+      const height = Math.max(1, ascent + descent + padding * 2);
+      const scale = AGENT_NAME_LAYER_SCALE;
+      const sprite = document.createElement("canvas");
+      sprite.width = Math.max(1, Math.ceil(width * scale));
+      sprite.height = Math.max(1, Math.ceil(height * scale));
+      const spriteCtx = sprite.getContext("2d");
+      spriteCtx.setTransform(scale, 0, 0, scale, 0, 0);
+      spriteCtx.font = font;
+      spriteCtx.fillStyle = agentColors.base;
+      spriteCtx.textAlign = "left";
+      spriteCtx.textBaseline = "alphabetic";
+      spriteCtx.fillText(displayName, padding, baseline);
+
+      const result = { canvas: sprite, width, height, baseline };
+      agentNameSprites.set(key, result);
+      return result;
+    }
+
+    function drawAgentFootprints(agent, renderedPoint, opacity = 1) {
+      const view = agentView(agent);
+      const path = routePathForView(view);
+      if (!Array.isArray(path) || path.length === 0) return;
+      const visualProgress = pathProgressAtPoint(path, renderedPoint);
+      const current = Math.max(0, Math.min(Math.floor(visualProgress), path.length - 1));
+      const start = Math.max(0, current - 7);
+      ctx.save();
+      for (let index = start; index < current; index++) {
+        const cell = path[index];
+        const age = visualProgress - index;
+        const alpha = Math.max(0.12, 0.42 - age * 0.035);
+        const seed = hashString(`foot|${agent.id}|${index}`);
+        const side = (seed % 2 === 0 ? -1 : 1) * 1.8;
+        const x = cell.col * CELL + CELL / 2 + side + jitter(seed, 0.6);
+        const y = cell.row * CELL + CELL / 2 + jitter(seed + 5, 0.9);
+        // 根据路径方向确定梭形朝向
+        const nextCell = path[Math.min(index + 1, path.length - 1)];
+        const dx = nextCell.col - cell.col;
+        const dy = nextCell.row - cell.row;
+        const angle = Math.atan2(dy, dx);
+        ctx.globalAlpha = alpha * clamp01(opacity);
+        ctx.fillStyle = agentColors.trail;
+        ctx.beginPath();
+        ctx.ellipse(x, y, 2.0, 1.3, angle, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+
+    function pathProgressAtPoint(path, point) {
+      if (!point || !Array.isArray(path) || path.length <= 1) return 0;
+      let bestProgress = 0;
+      let bestDistanceSq = Infinity;
+      for (let index = 0; index < path.length - 1; index++) {
+        const from = cellCenter(path[index]);
+        const to = cellCenter(path[index + 1]);
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        const lengthSq = dx * dx + dy * dy;
+        if (lengthSq <= 0) continue;
+        const rawT = ((point.x - from.x) * dx + (point.y - from.y) * dy) / lengthSq;
+        const t = clamp01(rawT);
+        const projectedX = from.x + dx * t;
+        const projectedY = from.y + dy * t;
+        const distanceSq = (point.x - projectedX) ** 2 + (point.y - projectedY) ** 2;
+        if (distanceSq < bestDistanceSq) {
+          bestDistanceSq = distanceSq;
+          bestProgress = index + t;
+        }
+      }
+      return bestProgress;
+    }
+
+    function isMovingAgent(agent, now = performance.now()) {
+      if (agentView(agent).phase === "MOVING") return true;
+      const animation = agentAnimations.get(String(agent.id));
+      if (!animation) return false;
+      const distance = animationTravelDistance(animation);
+      return distance > 0.5 && now < animationEndTime(animation);
+    }
+
+    function isRouteFootprintAgent(agent, now = performance.now()) {
+      const view = agentView(agent);
+      if (view.phase === "MOVING") return true;
+      if (view.phase !== "ACTIVITY") return false;
+      const animation = agentAnimations.get(String(agent.id));
+      if (!animation || !animation.duration || now >= animation.startTime + animation.duration) return false;
+      const routeEnd = routeEndPointForView(view);
+      if (!routeEnd) return false;
+      return Math.hypot(animation.to.x - routeEnd.x, animation.to.y - routeEnd.y) < 0.5;
+    }
+
+    function findAgent(id) {
+      return (sim.agents || []).find((agent) => String(agent.id) === String(id));
+    }
+
+    function findAgentInState(state, id) {
+      return (state?.agents || []).find((agent) => String(agent.id) === String(id));
+    }
+
+    function agentView(agent) {
+      const profile = agent.profile || {};
+      const trait = agent.trait || {};
+      const state = agent.state || {};
+      const context = agent.context || {};
+      return {
+        id: agent.id,
+        name: profile.name || "",
+        home: profile.home || "",
+        origin_name: profile.origin_name || "",
+        normal_meal_speed: Number(profile.normal_meal_speed || 1),
+        normal_walk_speed: Number(profile.normal_walk_speed_cells_per_step || 1),
+        phase: context.phase || "IDLE",
+        pos: context.pos || { x: 0, y: 0, row: 0, col: 0 },
+        path: Array.isArray(context.path) ? context.path : [],
+        path_key: context.path_key || "",
+        last_path_key: context.last_path_key || "",
+        last_path: Array.isArray(context.last_path) ? context.last_path : [],
+        path_index: Number(context.path_index || 0),
+        current_speed: Number(context.current_speed_cells_per_step || 0),
+        movement_progress: Number(context.movement_progress || 0),
+        render_motion: context.render_motion || null,
+        intention: context.intention || "",
+        target_region_id: context.target_region_id || "",
+        target_region_name: context.target_region_name || "",
+        current_action: context.current_action || "",
+        last_action: context.last_action || "",
+        action_phase: context.action_phase || "",
+        remaining_action_seconds: Number(context.remaining_action_seconds || 0),
+        reason: context.reason || "",
+        energy: clamp01(Number(state.energy || 0)),
+        satiety: clamp01(Number(state.satiety || 0)),
+        physical_health: clamp01(Number(trait.physical_health || 0)),
+        mental_health: clamp01(Number(trait.mental_health || 0)),
+        wellbeing: clamp01(Number(trait.wellbeing || 0)),
+      };
+    }
+
+    function resetAgentAnimations(nextSim) {
+      agentAnimations.clear();
+      const now = performance.now();
+      for (const agent of nextSim.agents || []) {
+        const target = renderTargetFor(agent, nextSim);
+        agentAnimations.set(String(agent.id), {
+          from: target,
+          to: target,
+          points: [target],
+          routeDistance: 0,
+          startTime: now,
+          duration: 0,
+          serverStep: nextSim.step,
+          playing: Boolean(nextSim.server?.playing),
+        });
+      }
+      window.__agentAnimations = agentAnimations;
+    }
+
+    function reconcileAgentAnimations(nextSim, options = {}) {
+      const now = performance.now();
+      const speedMultiplier = Math.max(0.01, Number(options.speedMultiplier || 1));
+      const seen = new Set();
+      for (const agent of nextSim.agents || []) {
+        const id = String(agent.id);
+        seen.add(id);
+        const viewSnapshot = agentView(agent);
+        const baseTarget = renderTargetFor(agent, nextSim);
+        const existing = agentAnimations.get(id);
+        if (!existing) {
+          agentAnimations.set(id, {
+            from: baseTarget,
+            to: baseTarget,
+            points: [baseTarget],
+            routeDistance: 0,
+            startTime: now,
+            duration: 0,
+            serverStep: nextSim.step,
+            playing: Boolean(nextSim.server?.playing),
+          });
+          continue;
+        }
+        const previousAgent = findAgentInState(sim, id);
+        const from = previousAgent ? agentRenderPoint(previousAgent, now) : interpolate(existing, now);
+        const previousView = previousAgent ? agentView(previousAgent) : null;
+        const motionTarget = Boolean(nextSim.server?.playing) ? renderMotionTargetFor(viewSnapshot) : null;
+        const target = motionTarget || stagedActivityTargetFor(viewSnapshot, from, baseTarget, existing, previousView);
+        const settleTarget = activitySettleTargetFor(viewSnapshot, target, baseTarget);
+        const finalTarget = settleTarget || target;
+        const existingFinalTarget = animationFinalTarget(existing);
+        const sameTarget = Math.abs(existingFinalTarget.x - finalTarget.x) < 0.001 && Math.abs(existingFinalTarget.y - finalTarget.y) < 0.001;
+        if (sameTarget) {
+          existing.playing = Boolean(nextSim.server?.playing);
+          continue;
+        }
+        const points = routePointsForTransition(from, target, viewSnapshot);
+        const routeDistance = polylineDistance(points);
+        const duration = durationForRoute(nextSim, routeDistance, viewSnapshot, points.length, speedMultiplier);
+        const nextAnimation = {
+          from,
+          to: target,
+          points,
+          routeDistance,
+          startTime: now,
+          duration: settleTarget && routeDistance <= 0.5 ? 0 : duration,
+          serverStep: nextSim.step,
+          playing: Boolean(nextSim.server?.playing),
+        };
+        if (settleTarget) {
+          const settleDistance = Math.hypot(settleTarget.x - target.x, settleTarget.y - target.y);
+          nextAnimation.settleFrom = target;
+          nextAnimation.settleTo = settleTarget;
+          nextAnimation.settleStartTime = now + nextAnimation.duration;
+          nextAnimation.settleDuration = durationForRoute(nextSim, settleDistance, viewSnapshot, 2, speedMultiplier);
+        }
+        agentAnimations.set(id, nextAnimation);
+      }
+      for (const id of agentAnimations.keys()) {
+        if (!seen.has(id)) agentAnimations.delete(id);
+      }
+      window.__agentAnimations = agentAnimations;
+    }
+
+    function agentRenderPoint(agent, now = performance.now()) {
+      const view = agentView(agent);
+      const animation = agentAnimations.get(String(agent.id));
+      if (!animation) return cellCenter(view.pos);
+      return interpolate(animation, now);
+    }
+
+    function interpolate(animation, now) {
+      if (animation.settleTo && Number.isFinite(animation.settleStartTime) && now >= animation.settleStartTime) {
+        const settleFrom = animation.settleFrom || animation.to;
+        const settleDuration = Math.max(0, Number(animation.settleDuration || 0));
+        if (!settleDuration) return animation.settleTo;
+        const raw = Math.max(0, Math.min(1, (now - animation.settleStartTime) / settleDuration));
+        return {
+          x: settleFrom.x + (animation.settleTo.x - settleFrom.x) * raw,
+          y: settleFrom.y + (animation.settleTo.y - settleFrom.y) * raw,
+        };
+      }
+      if (!animation.duration) return animation.to;
+      const raw = Math.max(0, Math.min(1, (now - animation.startTime) / animation.duration));
+      if (Array.isArray(animation.points) && animation.points.length > 1 && animation.routeDistance > 0) {
+        return interpolatePolyline(animation.points, animation.routeDistance * raw);
+      }
+      return {
+        x: animation.from.x + (animation.to.x - animation.from.x) * raw,
+        y: animation.from.y + (animation.to.y - animation.from.y) * raw,
+      };
+    }
+
+    function interpolatePolyline(points, targetDistance) {
+      let remaining = Math.max(0, targetDistance);
+      for (let index = 0; index < points.length - 1; index++) {
+        const from = points[index];
+        const to = points[index + 1];
+        const segmentDistance = Math.hypot(to.x - from.x, to.y - from.y);
+        if (segmentDistance <= 0) continue;
+        if (remaining <= segmentDistance) {
+          const t = remaining / segmentDistance;
+          return {
+            x: from.x + (to.x - from.x) * t,
+            y: from.y + (to.y - from.y) * t,
+          };
+        }
+        remaining -= segmentDistance;
+      }
+      return points[points.length - 1];
+    }
+
+    function cellCenter(pos) {
+      return {
+        x: pos.col * CELL + CELL / 2,
+        y: pos.row * CELL + CELL / 2,
+      };
+    }
+
+    function renderTargetFor(agent, state) {
+      const view = agentView(agent);
+      const activePath = routePathForView(view);
+      if (!activePath) return settledTargetFor(agent) || cellCenter(view.pos);
+      if (view.phase !== "MOVING") return settledTargetFor(agent) || cellCenter(activePath[activePath.length - 1]);
+      const current = cellCenter(activePath[view.path_index]);
+      const next = cellCenter(activePath[view.path_index + 1]);
+      const segmentDistance = segmentDistanceCells(activePath[view.path_index], activePath[view.path_index + 1]);
+      const fraction = clamp01(view.movement_progress / segmentDistance);
+      return {
+        x: current.x + (next.x - current.x) * fraction,
+        y: current.y + (next.y - current.y) * fraction,
+      };
+    }
+
+    function animationFinalTarget(animation) {
+      return animation?.settleTo || animation?.to || { x: 0, y: 0 };
+    }
+
+    function animationEndTime(animation) {
+      if (!animation) return 0;
+      if (animation.settleTo && Number.isFinite(animation.settleStartTime)) {
+        return animation.settleStartTime + Math.max(0, Number(animation.settleDuration || 0));
+      }
+      return animation.startTime + Math.max(0, Number(animation.duration || 0));
+    }
+
+    function animationTravelDistance(animation) {
+      if (!animation) return 0;
+      const primaryDistance = Array.isArray(animation.points) && animation.points.length > 1
+        ? polylineDistance(animation.points)
+        : Math.hypot(animation.to.x - animation.from.x, animation.to.y - animation.from.y);
+      const settleDistance = animation.settleTo
+        ? Math.hypot(animation.settleTo.x - (animation.settleFrom || animation.to).x, animation.settleTo.y - (animation.settleFrom || animation.to).y)
+        : 0;
+      return primaryDistance + settleDistance;
+    }
+
+    function renderMotionTargetFor(view) {
+      if (!view || view.phase !== "MOVING" || !view.render_motion) return null;
+      const activePath = routePathForView(view);
+      if (!activePath || activePath.length <= 1) return null;
+      if (view.render_motion.path_key && view.path_key && view.render_motion.path_key !== view.path_key) return null;
+      const distances = cumulativePathDistances(activePath);
+      return pointAtPathDistance(activePath, distances, Number(view.render_motion.end_distance));
+    }
+
+    function stagedActivityTargetFor(view, from, target, existing = null, previousView = null) {
+      if (!view || view.phase !== "ACTIVITY") return target;
+      const routeEnd = routeEndPointForView(view);
+      if (!routeEnd || !from) return target;
+      if (existing?.settleTo) return target;
+      const existingTargetsEntrance = existing && Math.hypot(existing.to.x - routeEnd.x, existing.to.y - routeEnd.y) < 0.5;
+      if (previousView && previousView.phase === "ACTIVITY" && !existingTargetsEntrance) return target;
+      const distanceToEntrance = Math.hypot(from.x - routeEnd.x, from.y - routeEnd.y);
+      return distanceToEntrance > CELL * 0.25 ? routeEnd : target;
+    }
+
+    function activitySettleTargetFor(view, target, baseTarget) {
+      if (!view || view.phase !== "ACTIVITY") return null;
+      const routeEnd = routeEndPointForView(view);
+      if (!routeEnd) return null;
+      if (Math.hypot(target.x - routeEnd.x, target.y - routeEnd.y) >= 0.5) return null;
+      if (Math.hypot(baseTarget.x - target.x, baseTarget.y - target.y) <= 0.5) return null;
+      return baseTarget;
+    }
+
+    function routeEndPointForView(view) {
+      const activePath = routePathForView(view);
+      if (!activePath || activePath.length === 0) return null;
+      return cellCenter(activePath[activePath.length - 1]);
+    }
+
+    function routePointsForTransition(from, target, view) {
+      const activePath = routePathForView(view);
+      if (!activePath || (view.phase !== "MOVING" && view.phase !== "ACTIVITY")) {
+        return [from, target];
+      }
+      const distances = cumulativePathDistances(activePath);
+      const fromDistance = pathDistanceAtPoint(activePath, distances, from);
+      const targetDistance = pathDistanceForTransition(view, distances);
+      if (!Number.isFinite(fromDistance) || !Number.isFinite(targetDistance) || targetDistance + 1e-6 < fromDistance) {
+        return [from, target];
+      }
+
+      const points = [from];
+      for (let index = 1; index < activePath.length - 1; index++) {
+        const distance = distances[index];
+        if (distance > fromDistance + 1e-6 && distance < targetDistance - 1e-6) {
+          points.push(cellCenter(activePath[index]));
+        }
+      }
+      points.push(target);
+      return points;
+    }
+
+    function routePathForView(view) {
+      if (!view) return null;
+      const cachedPath = agentPathCache.get(String(view.id));
+      const cachedPathKey = agentPathKeyCache.get(String(view.id));
+      if (view.phase === "MOVING"
+        && Array.isArray(view.path)
+        && view.path.length > 1
+        && view.path_index < view.path.length - 1) {
+        return view.path;
+      }
+      if (view.phase === "MOVING"
+        && Array.isArray(cachedPath)
+        && cachedPath.length > 1
+        && view.path_key
+        && cachedPathKey === view.path_key
+        && view.path_index < cachedPath.length - 1) {
+        return cachedPath;
+      }
+      if (view.phase === "ACTIVITY" && Array.isArray(view.last_path) && view.last_path.length > 1) {
+        return view.last_path;
+      }
+      if (view.phase === "ACTIVITY"
+        && Array.isArray(cachedPath)
+        && cachedPath.length > 1
+        && view.last_path_key
+        && cachedPathKey === view.last_path_key) {
+        return cachedPath;
+      }
+      return null;
+    }
+
+    function routeDisplayPathForView(view) {
+      const cachedPath = agentPathCache.get(String(view.id));
+      const cachedPathKey = agentPathKeyCache.get(String(view.id));
+      if (view.phase === "MOVING") {
+        if (Array.isArray(view.path) && view.path.length > 0) return view.path;
+        if (view.path_key && cachedPathKey === view.path_key) return cachedPath || [];
+        return [];
+      }
+      if (view.phase === "ACTIVITY") {
+        if (Array.isArray(view.last_path) && view.last_path.length > 0) return view.last_path;
+        if (view.last_path_key && cachedPathKey === view.last_path_key) return cachedPath || [];
+        return [];
+      }
+      return [];
+    }
+
+    function stateNeedsPaths(state) {
+      for (const agent of state?.agents || []) {
+        const view = agentView(agent);
+        const cachedKey = agentPathKeyCache.get(String(view.id));
+        if (view.phase === "MOVING" && view.path_key) {
+          if (Array.isArray(view.path) && view.path.length > 1) continue;
+          if (cachedKey !== view.path_key) return true;
+        }
+        if (view.phase === "ACTIVITY" && view.last_path_key) {
+          if (Array.isArray(view.last_path) && view.last_path.length > 1) continue;
+          if (cachedKey !== view.last_path_key) return true;
+        }
+      }
+      return false;
+    }
+
+    function updateAgentPathCache(state) {
+      for (const agent of state?.agents || []) {
+        const view = agentView(agent);
+        if (Array.isArray(view.path) && view.path.length > 1) {
+          agentPathCache.set(String(view.id), view.path);
+          agentPathKeyCache.set(String(view.id), view.path_key || "");
+        } else if (Array.isArray(view.last_path) && view.last_path.length > 1) {
+          agentPathCache.set(String(view.id), view.last_path);
+          agentPathKeyCache.set(String(view.id), view.last_path_key || "");
+        }
+      }
+    }
+
+    function cumulativePathDistances(path) {
+      const distances = [0];
+      for (let index = 1; index < path.length; index++) {
+        distances.push(distances[index - 1] + segmentDistanceCells(path[index - 1], path[index]));
+      }
+      return distances;
+    }
+
+    function pathDistanceForView(view, distances) {
+      const activePath = routePathForView(view);
+      if (!activePath) return 0;
+      const lastIndex = activePath.length - 1;
+      if (view.phase !== "MOVING") return distances[lastIndex];
+      const pathIndex = Math.max(0, Math.min(lastIndex, Math.trunc(view.path_index)));
+      if (pathIndex >= lastIndex) return distances[lastIndex];
+      const segmentDistance = segmentDistanceCells(activePath[pathIndex], activePath[pathIndex + 1]);
+      const progress = Math.max(0, Math.min(segmentDistance, Number(view.movement_progress || 0)));
+      return distances[pathIndex] + progress;
+    }
+
+    function pathDistanceForTransition(view, distances) {
+      if (view?.phase === "MOVING" && view.render_motion) {
+        const targetDistance = Number(view.render_motion.end_distance);
+        if (Number.isFinite(targetDistance)) {
+          const lastDistance = distances[distances.length - 1] || 0;
+          return Math.max(0, Math.min(lastDistance, targetDistance));
+        }
+      }
+      return pathDistanceForView(view, distances);
+    }
+
+    function pointAtPathDistance(path, distances, targetDistance) {
+      if (!Array.isArray(path) || path.length === 0) return null;
+      if (!Array.isArray(distances) || distances.length !== path.length) return null;
+      let remainingDistance = Math.max(0, Math.min(distances[distances.length - 1] || 0, targetDistance));
+      for (let index = 0; index < path.length - 1; index++) {
+        const segmentDistance = distances[index + 1] - distances[index];
+        if (segmentDistance <= 0) continue;
+        if (remainingDistance <= segmentDistance + 1e-9) {
+          const from = cellCenter(path[index]);
+          const to = cellCenter(path[index + 1]);
+          const t = clamp01(remainingDistance / segmentDistance);
+          return {
+            x: from.x + (to.x - from.x) * t,
+            y: from.y + (to.y - from.y) * t,
+          };
+        }
+        remainingDistance -= segmentDistance;
+      }
+      return cellCenter(path[path.length - 1]);
+    }
+
+    function pathDistanceAtPoint(path, distances, point) {
+      if (!point || !Array.isArray(path) || path.length <= 1) return NaN;
+      let bestDistance = NaN;
+      let bestDistanceSq = Infinity;
+      for (let index = 0; index < path.length - 1; index++) {
+        const from = cellCenter(path[index]);
+        const to = cellCenter(path[index + 1]);
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        const lengthSq = dx * dx + dy * dy;
+        if (lengthSq <= 0) continue;
+        const rawT = ((point.x - from.x) * dx + (point.y - from.y) * dy) / lengthSq;
+        const t = clamp01(rawT);
+        const projectedX = from.x + dx * t;
+        const projectedY = from.y + dy * t;
+        const distanceSq = (point.x - projectedX) ** 2 + (point.y - projectedY) ** 2;
+        if (distanceSq < bestDistanceSq) {
+          bestDistanceSq = distanceSq;
+          bestDistance = distances[index] + Math.sqrt(lengthSq) / CELL * t;
+        }
+      }
+      return bestDistance;
+    }
+
+    function polylineDistance(points) {
+      if (!Array.isArray(points) || points.length <= 1) return 0;
+      let distance = 0;
+      for (let index = 0; index < points.length - 1; index++) {
+        distance += Math.hypot(points[index + 1].x - points[index].x, points[index + 1].y - points[index].y);
+      }
+      return distance;
+    }
+
+    function segmentDistanceCells(from, to) {
+      if (!from || !to) return 1;
+      const dx = Number(to.col) - Number(from.col);
+      const dy = Number(to.row) - Number(from.row);
+      const distance = Math.hypot(dx, dy);
+      return distance > 0 ? distance : 1;
+    }
+
+    function settledTargetFor(agent) {
+      const view = agentView(agent);
+      const active = view.phase === "ACTIVITY";
+      if (!active) return null;
+      const regionId = view.target_region_id || view.home;
+      if (!regionId || !regionById.has(regionId)) return null;
+      const stableKey = [
+        agent.id,
+        regionId,
+      ].join("|");
+      if (regionDisplayPoints.has(stableKey)) return regionDisplayPoints.get(stableKey);
+      const region = regionById.get(regionId);
+      const point = randomPointInRegion(region, stableKey);
+      regionDisplayPoints.set(stableKey, point);
+      return point;
+    }
+
+    function randomPointInRegion(region, key) {
+      const cells = Array.isArray(region.cells) && region.cells.length ? region.cells : null;
+      if (!cells) {
+        const bounds = region.bounds || {};
+        const row = Number.isFinite(bounds.rowMin) ? bounds.rowMin : 0;
+        const col = Number.isFinite(bounds.colMin) ? bounds.colMin : 0;
+        return { x: (col + 0.5) * CELL, y: (row + 0.5) * CELL };
+      }
+      let seed = hashString(key);
+      const cell = cells[seed % cells.length];
+      seed = hashNumber(seed);
+      const offsetX = 0.18 + (seed / 4294967295) * 0.64;
+      seed = hashNumber(seed);
+      const offsetY = 0.18 + (seed / 4294967295) * 0.64;
+      return {
+        x: (cell.col + offsetX) * CELL,
+        y: (cell.row + offsetY) * CELL,
+      };
+    }
+
+    function hashString(text) {
+      let hash = 2166136261;
+      for (let i = 0; i < text.length; i++) {
+        hash ^= text.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+      }
+      return hash >>> 0;
+    }
+
+    function hashNumber(value) {
+      value = Math.imul(value ^ (value >>> 16), 2246822507);
+      value = Math.imul(value ^ (value >>> 13), 3266489909);
+      return (value ^ (value >>> 16)) >>> 0;
+    }
+
+    function jitter(seed, amount) {
+      return ((hashNumber(seed) / 4294967295) * 2 - 1) * amount;
+    }
+
+    function clamp01(value) {
+      if (!Number.isFinite(value)) return 0;
+      return Math.max(0, Math.min(1, value));
+    }
+
+    function durationForRoute(state, routeDistance, view = null, pointCount = 2, speedMultiplier = 1) {
+      const serverSpeed = Math.max(0.01, Number(state.server?.speed || 1));
+      const secondsPerStep = Number(state.seconds_per_step || state.server?.sync_interval_seconds || 1);
+      const walkSpeed = Math.max(0.01, Number(view?.normal_walk_speed || view?.current_speed || 1));
+      const multiplier = Math.max(0.01, Number(speedMultiplier || 1));
+      // Base duration: wall-clock time to cover routeDistance at the agent's walk speed.
+      const tickIntervalMs = (secondsPerStep / serverSpeed) * 1000;
+      const baseDuration = tickIntervalMs * (routeDistance / CELL) / walkSpeed;
+      // Minimal slack: prevents animation from ending just before the next poll,
+      // but kept small (5% cap, absolute max 50ms) to avoid cumulative lag that
+      // causes caterpillar-like speed oscillation across ticks.
+      const slackMs = Math.min(50, Math.min(STATE_REFRESH_INTERVAL_MS * 0.5, baseDuration * 0.05));
+      const duration = (baseDuration + slackMs) / multiplier;
+      const visibleMinimum = Math.min(360, Math.max(40, (pointCount - 1) * 24)) / multiplier;
+      return Math.max(visibleMinimum, Math.min(6000 / multiplier, duration));
+    }
+
+    function nearestAgent(event) {
+      const point = canvasToWorld(event);
+      const now = performance.now();
+      let best = null;
+      let bestDistance = Infinity;
+      for (const agent of sim.agents || []) {
+        const rendered = agentRenderPoint(agent, now);
+        const ax = rendered.x;
+        const ay = rendered.y;
+        const distance = Math.hypot(ax - point.x, ay - point.y) * view.scale;
+        if (distance < bestDistance) {
+          best = agent;
+          bestDistance = distance;
+        }
+      }
+      return bestDistance <= 14 ? best : null;
+    }
+
+    function canvasToWorld(event) {
+      const rect = canvas.getBoundingClientRect();
+      const framePoint = {
+        x: (event.clientX - rect.left - view.offsetX) / view.scale,
+        y: (event.clientY - rect.top - view.offsetY) / view.scale,
+      };
+      return frameToSourceWorld(framePoint);
+    }
+
+    function frameToSourceWorld(point) {
+      const bounds = submapWorldBounds(activeSubmapId);
+      const layout = contentLayoutForBounds(bounds);
+      return {
+        x: (point.x - layout.offsetX) / layout.scale + bounds.left,
+        y: (point.y - layout.offsetY) / layout.scale + bounds.top,
+      };
+    }
+
+    function updateNameFades() {
+      const now = performance.now();
+      for (const agent of sim.agents || []) {
+        const id = agent.id;
+        const alpha = nameFadeAlphas.get(id) || 0;
+        // 每 16ms (~60fps) 更新一次
+        if (!nameFadeAlphas.has(id)) nameFadeAlphas.set(id, 0);
+        if (String(id) === String(hoveredAgent?.id) || String(id) === String(selectedId)) {
+          nameFadeAlphas.set(id, Math.min(1, alpha + 0.03));
+        } else {
+          nameFadeAlphas.set(id, Math.max(0, alpha - 0.02));
+        }
+      }
+    }
+
+    socialCanvas.addEventListener("mousemove", (event) => {
+      hoveredNetworkNodeId = nearestSocialNode(event);
+      showNetworkTooltip(hoveredNetworkNodeId, event);
+      drawSocialNetwork();
+    });
+    socialCanvas.addEventListener("mouseleave", () => {
+      hoveredNetworkNodeId = null;
+      tooltip.style.display = "none";
+      drawSocialNetwork();
+    });
+    socialCanvas.addEventListener("click", (event) => {
+      const nodeId = nearestSocialNode(event);
+      if (!nodeId) return;
+      selectedId = nodeId;
+      updatePanel();
+      draw();
+      drawSocialNetwork();
+    });
+
+    function redrawMapInteraction() {
+      updatePanelAnchors();
+      draw();
+    }
+
+    function handleMapHover(event) {
+      if (view.dragging) return;
+      hoveredAgent = nearestAgent(event);
+      draw();
+    }
+
+    function handleMapMouseLeave() {
+      hoveredAgent = null;
+      draw();
+    }
+
+    function handleMapWheel(event) {
+      if (event.target.closest("select, input, textarea")) return;
+      event.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = event.clientX - rect.left;
+      const mouseY = event.clientY - rect.top;
+      const beforeX = (mouseX - view.offsetX) / view.scale;
+      const beforeY = (mouseY - view.offsetY) / view.scale;
+      const factor = event.deltaY < 0 ? 1.14 : 0.88;
+      view.scale = Math.max(0.08, Math.min(14, view.scale * factor));
+      view.offsetX = mouseX - beforeX * view.scale;
+      view.offsetY = mouseY - beforeY * view.scale;
+      redrawMapInteraction();
+    }
+
+    let dragPointerTarget = null;
+    function handleMapPointerDown(event) {
+      if (event.button !== 2) return;
+      event.preventDefault();
+      view.dragging = true;
+      view.lastX = event.clientX;
+      view.lastY = event.clientY;
+      dragPointerTarget = event.currentTarget;
+      dragPointerTarget.setPointerCapture?.(event.pointerId);
+    }
+
+    function handleMapPointerMove(event) {
+      if (!view.dragging) return;
+      view.offsetX += event.clientX - view.lastX;
+      view.offsetY += event.clientY - view.lastY;
+      view.lastX = event.clientX;
+      view.lastY = event.clientY;
+      redrawMapInteraction();
+    }
+
+    function handleMapPointerUp(event) {
+      if (!view.dragging) return;
+      view.dragging = false;
+      dragPointerTarget?.releasePointerCapture?.(event.pointerId);
+      dragPointerTarget = null;
+    }
+
+    function handleMapContextMenu(event) {
+      event.preventDefault();
+    }
+
+    const mapInteractionTargets = [canvas, leftPanel, rightPanel].filter(Boolean);
+    for (const target of mapInteractionTargets) {
+      target.addEventListener("wheel", handleMapWheel, { passive: false });
+      target.addEventListener("pointerdown", handleMapPointerDown);
+      target.addEventListener("pointermove", handleMapPointerMove);
+      target.addEventListener("pointerup", handleMapPointerUp);
+      target.addEventListener("contextmenu", handleMapContextMenu);
+    }
+
+    canvas.addEventListener("mousemove", handleMapHover);
+    canvas.addEventListener("mouseleave", handleMapMouseLeave);
+    canvas.addEventListener("click", (event) => {
+      const agent = nearestAgent(event);
+      selectedId = agent ? agent.id : null;
+      updatePanel();
+      draw();
+      drawSocialNetwork();
+    });
+    window.addEventListener("resize", resize);
+
+    init().catch((error) => {
+      console.error(error);
+      showInitError(error);
+    });
+  </script>
+
+</body>
+</html>

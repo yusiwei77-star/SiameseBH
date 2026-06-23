@@ -1,0 +1,935 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BHmap Campus Grid Annotator</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --line: #d9dee6;
+      --text: #17202a;
+      --muted: #617083;
+      --accent: #176b87;
+      --accent-soft: #dff2f6;
+      --danger: #b42318;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", Arial, "Microsoft YaHei", sans-serif;
+      letter-spacing: 0;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      height: 100vh;
+      min-width: 760px;
+    }
+
+    aside {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow-y: auto;
+      padding: 16px;
+      border-right: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    main {
+      position: relative;
+      min-width: 0;
+      overflow: hidden;
+      background: #111820;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 19px;
+      line-height: 1.25;
+      font-weight: 700;
+    }
+
+    h2 {
+      margin: 0 0 8px;
+      font-size: 13px;
+      line-height: 1.25;
+      color: #334155;
+      font-weight: 700;
+    }
+
+    .subtle {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .section {
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .button-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    button, label.file-button {
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      color: #1f2937;
+      padding: 7px 10px;
+      font: inherit;
+      font-size: 13px;
+      line-height: 1.2;
+      cursor: pointer;
+      user-select: none;
+      transition: border-color .12s ease, background .12s ease, color .12s ease;
+    }
+
+    button:hover, label.file-button:hover {
+      border-color: #9eb7c1;
+      background: #f8fbfc;
+    }
+
+    button.active {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: #0f4f63;
+      font-weight: 700;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: .45;
+    }
+
+    .swatch {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      margin-right: 6px;
+      border-radius: 2px;
+      vertical-align: -1px;
+      border: 1px solid rgba(0, 0, 0, .18);
+    }
+
+    .brush-size {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) 58px;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      color: #334155;
+      font-size: 13px;
+    }
+
+    input[type="text"] {
+      min-width: 0;
+      height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 6px 9px;
+      font: inherit;
+      font-size: 13px;
+    }
+
+    input[type="number"] {
+      width: 58px;
+      height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 5px 7px;
+      font: inherit;
+      font-size: 13px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      min-width: 0;
+      accent-color: var(--accent);
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .status {
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      pointer-events: none;
+      color: #e6edf3;
+      font-size: 12px;
+    }
+
+    .status span {
+      max-width: 48%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      padding: 7px 10px;
+      border-radius: 7px;
+      background: rgba(10, 16, 24, .78);
+      box-shadow: var(--shadow);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+    }
+
+    canvas.panning {
+      cursor: grab;
+    }
+
+    .kbd {
+      padding: 1px 5px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      background: #f8fafc;
+      color: #334155;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <section class="section">
+        <h1>BHmap Grid Annotator</h1>
+        <p class="subtle">Grid: 25px. Sparse JSON only stores annotated cells.</p>
+      </section>
+
+      <section class="section">
+        <h2>Tool</h2>
+        <div class="button-grid" id="toolButtons"></div>
+        <div class="brush-size">
+          <label for="brushSize">Brush size</label>
+          <input id="brushSize" type="range" min="1" max="15" step="1" value="1">
+          <input id="brushSizeNumber" type="number" min="1" max="15" step="1" value="1">
+        </div>
+        <p class="subtle">Wheel zooms at cursor. Hold <span class="kbd">Space</span> or right mouse button to pan.</p>
+      </section>
+
+      <section class="section">
+        <h2>Terrain</h2>
+        <div class="button-grid" id="terrainButtons"></div>
+      </section>
+
+      <section class="section">
+        <h2>Actions</h2>
+        <div class="button-row">
+          <button id="undo" type="button">Undo</button>
+          <button id="redo" type="button">Redo</button>
+          <label class="file-button" for="importFile">Import JSON</label>
+          <input id="importFile" type="file" accept="application/json,.json">
+        </div>
+        <div class="button-row" style="margin-top:8px">
+          <button id="exportJson" type="button">Export JSON</button>
+          <button id="exportTerrain" type="button">Export Terrain PNG</button>
+        </div>
+      </section>
+
+      <section>
+        <h2>Selection</h2>
+        <p class="subtle" id="selectionText"></p>
+        <p class="subtle" id="countText"></p>
+      </section>
+    </aside>
+
+    <main>
+      <canvas id="mapCanvas"></canvas>
+      <div class="status">
+        <span id="viewportStatus">Loading BHmap.png...</span>
+        <span id="cellStatus">No cell</span>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    "use strict";
+
+    const IMAGE_NAME = "BHmap.png";
+    const GRID_SIZE = 25;
+
+    const terrainLabels = ["road", "building", "grass", "water", "sports_field", "open_ground", "gate", "fence"];
+
+    const terrainPalette = {
+      road: "#7f8c8d",
+      building: "#d35400",
+      grass: "#2e8b57",
+      water: "#2f80ed",
+      sports_field: "#27ae60",
+      open_ground: "#b7950b",
+      gate: "#8e44ad",
+      fence: "#111827"
+    };
+
+    const tools = [
+      { id: "paint", label: "Brush" },
+      { id: "eraseTerrain", label: "Erase terrain" },
+      { id: "eraseCell", label: "Erase cell" },
+      { id: "pan", label: "Pan" }
+    ];
+
+    const canvas = document.getElementById("mapCanvas");
+    const ctx = canvas.getContext("2d", { alpha: false });
+    const img = new Image();
+
+    const cells = new Map();
+    const undoStack = [];
+    const redoStack = [];
+
+    let selectedTerrain = "building";
+    let activeTool = "paint";
+    let brushSize = 1;
+    let view = { scale: 1, x: 0, y: 0 };
+    let imageSize = { width: 0, height: 0 };
+    let canvasSize = { width: 1, height: 1, dpr: 1 };
+    let pointerState = null;
+    let spaceDown = false;
+    let rafPending = false;
+
+    function keyOf(row, col) {
+      return `${row},${col}`;
+    }
+
+    function parseKey(key) {
+      const [row, col] = key.split(",").map(Number);
+      return { row, col };
+    }
+
+    function cloneCell(cell) {
+      if (!cell) return undefined;
+      const out = {};
+      if (cell.terrain) out.terrain = cell.terrain;
+      return Object.keys(out).length ? out : undefined;
+    }
+
+    function setSparseCell(row, col, next) {
+      const key = keyOf(row, col);
+      const clean = cloneCell(next);
+      if (clean) cells.set(key, clean);
+      else cells.delete(key);
+    }
+
+    function cellsEqual(a, b) {
+      return (a?.terrain || "") === (b?.terrain || "");
+    }
+
+    function recordChange(batch, row, col, before, after) {
+      if (cellsEqual(before, after)) return;
+      const key = keyOf(row, col);
+      if (!batch.has(key)) {
+        batch.set(key, { row, col, before: cloneCell(before), after: cloneCell(after) });
+      } else {
+        const existing = batch.get(key);
+        existing.after = cloneCell(after);
+        if (cellsEqual(existing.before, existing.after)) batch.delete(key);
+      }
+    }
+
+    function applyToolToCell(row, col, batch) {
+      if (row < 0 || col < 0 || row * GRID_SIZE >= imageSize.height || col * GRID_SIZE >= imageSize.width) return;
+
+      const key = keyOf(row, col);
+      const before = cloneCell(cells.get(key));
+      const next = cloneCell(before) || {};
+
+      if (activeTool === "paint") {
+        if (before) return;
+        if (!selectedTerrain) return;
+        if (selectedTerrain) next.terrain = selectedTerrain;
+      } else if (activeTool === "eraseTerrain") {
+        delete next.terrain;
+      } else if (activeTool === "eraseCell") {
+        delete next.terrain;
+      } else {
+        return;
+      }
+
+      const after = cloneCell(next);
+      setSparseCell(row, col, after);
+      recordChange(batch, row, col, before, after);
+      updateCount();
+      requestRender();
+    }
+
+    function applyBrushToCell(centerRow, centerCol, batch) {
+      const before = Math.floor((brushSize - 1) / 2);
+      const after = brushSize - before - 1;
+      for (let row = centerRow - before; row <= centerRow + after; row++) {
+        for (let col = centerCol - before; col <= centerCol + after; col++) {
+          applyToolToCell(row, col, batch);
+        }
+      }
+    }
+
+    function commitBatch(batch) {
+      if (!batch || batch.size === 0) return;
+      undoStack.push(Array.from(batch.values()));
+      redoStack.length = 0;
+      updateUndoRedo();
+    }
+
+    function applyBatch(batch, direction) {
+      for (const change of batch) {
+        setSparseCell(change.row, change.col, direction === "undo" ? change.before : change.after);
+      }
+      updateCount();
+      requestRender();
+    }
+
+    function undo() {
+      const batch = undoStack.pop();
+      if (!batch) return;
+      applyBatch(batch, "undo");
+      redoStack.push(batch);
+      updateUndoRedo();
+    }
+
+    function redo() {
+      const batch = redoStack.pop();
+      if (!batch) return;
+      applyBatch(batch, "redo");
+      undoStack.push(batch);
+      updateUndoRedo();
+    }
+
+    function hexToRgba(hex, alpha) {
+      const n = Number.parseInt(hex.slice(1), 16);
+      return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+    }
+
+    function colorFor(label, palette) {
+      if (!palette[label]) {
+        let hash = 0;
+        for (let i = 0; i < label.length; i++) hash = (hash * 31 + label.charCodeAt(i)) >>> 0;
+        const r = 72 + (hash & 127);
+        const g = 72 + ((hash >> 8) & 127);
+        const b = 72 + ((hash >> 16) & 127);
+        palette[label] = `#${[r, g, b].map(v => v.toString(16).padStart(2, "0")).join("")}`;
+      }
+      return palette[label];
+    }
+
+    function screenToWorld(x, y) {
+      return {
+        x: (x - view.x) / view.scale,
+        y: (y - view.y) / view.scale
+      };
+    }
+
+    function worldToCell(world) {
+      return {
+        row: Math.floor(world.y / GRID_SIZE),
+        col: Math.floor(world.x / GRID_SIZE)
+      };
+    }
+
+    function eventPoint(event) {
+      const rect = canvas.getBoundingClientRect();
+      return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    }
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const width = Math.max(1, Math.floor(rect.width));
+      const height = Math.max(1, Math.floor(rect.height));
+      canvasSize = { width, height, dpr };
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      requestRender();
+    }
+
+    function fitImage() {
+      if (!imageSize.width || !imageSize.height) return;
+      const scale = Math.min(canvasSize.width / imageSize.width, canvasSize.height / imageSize.height) * 0.96;
+      view.scale = Math.max(0.02, scale);
+      view.x = (canvasSize.width - imageSize.width * view.scale) / 2;
+      view.y = (canvasSize.height - imageSize.height * view.scale) / 2;
+      requestRender();
+    }
+
+    function requestRender() {
+      if (rafPending) return;
+      rafPending = true;
+      requestAnimationFrame(() => {
+        rafPending = false;
+        render();
+      });
+    }
+
+    function render() {
+      ctx.setTransform(canvasSize.dpr, 0, 0, canvasSize.dpr, 0, 0);
+      ctx.fillStyle = "#111820";
+      ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
+
+      if (!img.complete || !imageSize.width) return;
+
+      const left = Math.max(0, (0 - view.x) / view.scale);
+      const top = Math.max(0, (0 - view.y) / view.scale);
+      const right = Math.min(imageSize.width, (canvasSize.width - view.x) / view.scale);
+      const bottom = Math.min(imageSize.height, (canvasSize.height - view.y) / view.scale);
+
+      if (right > left && bottom > top) {
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(
+          img,
+          left, top, right - left, bottom - top,
+          view.x + left * view.scale,
+          view.y + top * view.scale,
+          (right - left) * view.scale,
+          (bottom - top) * view.scale
+        );
+      }
+
+      const rowStart = Math.max(0, Math.floor(top / GRID_SIZE) - 1);
+      const rowEnd = Math.min(Math.ceil(imageSize.height / GRID_SIZE) - 1, Math.ceil(bottom / GRID_SIZE) + 1);
+      const colStart = Math.max(0, Math.floor(left / GRID_SIZE) - 1);
+      const colEnd = Math.min(Math.ceil(imageSize.width / GRID_SIZE) - 1, Math.ceil(right / GRID_SIZE) + 1);
+
+      drawAnnotations(rowStart, rowEnd, colStart, colEnd);
+      drawGrid(rowStart, rowEnd, colStart, colEnd);
+      updateViewportStatus();
+    }
+
+    function drawAnnotations(rowStart, rowEnd, colStart, colEnd) {
+      for (let row = rowStart; row <= rowEnd; row++) {
+        for (let col = colStart; col <= colEnd; col++) {
+          const cell = cells.get(keyOf(row, col));
+          if (!cell) continue;
+          const x = view.x + col * GRID_SIZE * view.scale;
+          const y = view.y + row * GRID_SIZE * view.scale;
+          const w = Math.min(GRID_SIZE, imageSize.width - col * GRID_SIZE) * view.scale;
+          const h = Math.min(GRID_SIZE, imageSize.height - row * GRID_SIZE) * view.scale;
+
+          if (cell.terrain) {
+            ctx.fillStyle = hexToRgba(colorFor(cell.terrain, terrainPalette), 0.38);
+            ctx.fillRect(x, y, w, h);
+          }
+
+        }
+      }
+    }
+
+    function drawGrid(rowStart, rowEnd, colStart, colEnd) {
+      if (view.scale < 0.18) return;
+      ctx.beginPath();
+      ctx.strokeStyle = view.scale < 0.45 ? "rgba(255,255,255,.20)" : "rgba(255,255,255,.36)";
+      ctx.lineWidth = 1;
+
+      for (let col = colStart; col <= colEnd + 1; col++) {
+        const x = Math.round(view.x + col * GRID_SIZE * view.scale) + 0.5;
+        ctx.moveTo(x, view.y + rowStart * GRID_SIZE * view.scale);
+        ctx.lineTo(x, view.y + (rowEnd + 1) * GRID_SIZE * view.scale);
+      }
+
+      for (let row = rowStart; row <= rowEnd + 1; row++) {
+        const y = Math.round(view.y + row * GRID_SIZE * view.scale) + 0.5;
+        ctx.moveTo(view.x + colStart * GRID_SIZE * view.scale, y);
+        ctx.lineTo(view.x + (colEnd + 1) * GRID_SIZE * view.scale, y);
+      }
+
+      ctx.stroke();
+    }
+
+    function renderButtons() {
+      const toolRoot = document.getElementById("toolButtons");
+      toolRoot.innerHTML = "";
+      for (const tool of tools) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = tool.label;
+        button.className = tool.id === activeTool ? "active" : "";
+        button.addEventListener("click", () => {
+          activeTool = tool.id;
+          renderButtons();
+          updateSelection();
+        });
+        toolRoot.appendChild(button);
+      }
+
+      renderLabelButtons("terrainButtons", terrainLabels, terrainPalette, "terrain");
+      updateSelection();
+      updateUndoRedo();
+    }
+
+    function renderLabelButtons(rootId, labels, palette, type, displayNames = {}) {
+      const root = document.getElementById(rootId);
+      root.innerHTML = "";
+
+      const clear = document.createElement("button");
+      clear.type = "button";
+      clear.textContent = "No terrain";
+      clear.className = selectedTerrain ? "" : "active";
+      clear.addEventListener("click", () => {
+        selectedTerrain = null;
+        renderButtons();
+      });
+      root.appendChild(clear);
+
+      for (const label of labels) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.title = label;
+        button.innerHTML = `<span class="swatch" style="background:${colorFor(label, palette)}"></span>${displayNames[label] || label}`;
+        const active = selectedTerrain === label;
+        button.className = active ? "active" : "";
+        button.addEventListener("click", () => {
+          selectedTerrain = selectedTerrain === label ? null : label;
+          renderButtons();
+        });
+        root.appendChild(button);
+      }
+    }
+
+    function updateSelection() {
+      document.getElementById("selectionText").textContent =
+        `Tool: ${activeTool}; brush: ${brushSize}x${brushSize}; terrain: ${selectedTerrain || "-"}`;
+      canvas.classList.toggle("panning", activeTool === "pan" || spaceDown);
+    }
+
+    function updateCount() {
+      document.getElementById("countText").textContent = `Annotated cells: ${cells.size}`;
+    }
+
+    function updateUndoRedo() {
+      document.getElementById("undo").disabled = undoStack.length === 0;
+      document.getElementById("redo").disabled = redoStack.length === 0;
+    }
+
+    function setBrushSize(value) {
+      const next = Math.max(1, Math.min(15, Math.round(Number(value) || 1)));
+      brushSize = next;
+      document.getElementById("brushSize").value = String(next);
+      document.getElementById("brushSizeNumber").value = String(next);
+      updateSelection();
+    }
+
+    function updateViewportStatus() {
+      const pct = Math.round(view.scale * 100);
+      document.getElementById("viewportStatus").textContent =
+        `${imageSize.width}x${imageSize.height}; zoom ${pct}%; cells ${Math.ceil(imageSize.width / GRID_SIZE)}x${Math.ceil(imageSize.height / GRID_SIZE)}`;
+    }
+
+    function updateCellStatus(event) {
+      const pt = eventPoint(event);
+      const world = screenToWorld(pt.x, pt.y);
+      const { row, col } = worldToCell(world);
+      const cell = cells.get(keyOf(row, col));
+      const inside = world.x >= 0 && world.y >= 0 && world.x < imageSize.width && world.y < imageSize.height;
+      document.getElementById("cellStatus").textContent = inside
+        ? `row ${row}, col ${col}; ${cell ? JSON.stringify(cell) : "empty"}`
+        : "Outside image";
+    }
+
+    function beginPointer(event) {
+      const pt = eventPoint(event);
+      const shouldPan = activeTool === "pan" || spaceDown || event.button === 1 || event.button === 2;
+      pointerState = {
+        mode: shouldPan ? "pan" : "draw",
+        lastX: pt.x,
+        lastY: pt.y,
+        batch: new Map(),
+        lastCellKey: null
+      };
+      canvas.setPointerCapture(event.pointerId);
+
+      if (!shouldPan) {
+        paintAtPoint(pt);
+      }
+      event.preventDefault();
+    }
+
+    function movePointer(event) {
+      updateCellStatus(event);
+      if (!pointerState) return;
+      const pt = eventPoint(event);
+
+      if (pointerState.mode === "pan") {
+        view.x += pt.x - pointerState.lastX;
+        view.y += pt.y - pointerState.lastY;
+        pointerState.lastX = pt.x;
+        pointerState.lastY = pt.y;
+        requestRender();
+      } else {
+        paintLine(pointerState.lastX, pointerState.lastY, pt.x, pt.y);
+        pointerState.lastX = pt.x;
+        pointerState.lastY = pt.y;
+      }
+      event.preventDefault();
+    }
+
+    function endPointer(event) {
+      if (pointerState?.mode === "draw") commitBatch(pointerState.batch);
+      pointerState = null;
+      try {
+        canvas.releasePointerCapture(event.pointerId);
+      } catch (_) {}
+      event.preventDefault();
+    }
+
+    function paintAtPoint(pt) {
+      const { row, col } = worldToCell(screenToWorld(pt.x, pt.y));
+      const key = keyOf(row, col);
+      if (pointerState.lastCellKey === key) return;
+      pointerState.lastCellKey = key;
+      applyBrushToCell(row, col, pointerState.batch);
+    }
+
+    function paintLine(x0, y0, x1, y1) {
+      const dist = Math.hypot(x1 - x0, y1 - y0);
+      const step = Math.max(2, GRID_SIZE * view.scale * 0.45);
+      const count = Math.max(1, Math.ceil(dist / step));
+      for (let i = 0; i <= count; i++) {
+        const t = i / count;
+        paintAtPoint({ x: x0 + (x1 - x0) * t, y: y0 + (y1 - y0) * t });
+      }
+    }
+
+    function zoomAt(event) {
+      const pt = eventPoint(event);
+      const before = screenToWorld(pt.x, pt.y);
+      const factor = Math.exp(-event.deltaY * 0.0015);
+      const nextScale = Math.max(0.025, Math.min(8, view.scale * factor));
+      view.scale = nextScale;
+      view.x = pt.x - before.x * view.scale;
+      view.y = pt.y - before.y * view.scale;
+      requestRender();
+      event.preventDefault();
+    }
+
+    function computeBounds() {
+      if (cells.size === 0) return null;
+      let rowMin = Infinity, rowMax = -Infinity, colMin = Infinity, colMax = -Infinity;
+      for (const key of cells.keys()) {
+        const { row, col } = parseKey(key);
+        rowMin = Math.min(rowMin, row);
+        rowMax = Math.max(rowMax, row);
+        colMin = Math.min(colMin, col);
+        colMax = Math.max(colMax, col);
+      }
+      const x = colMin * GRID_SIZE;
+      const y = rowMin * GRID_SIZE;
+      const width = Math.min(imageSize.width - x, (colMax - colMin + 1) * GRID_SIZE);
+      const height = Math.min(imageSize.height - y, (rowMax - rowMin + 1) * GRID_SIZE);
+      return {
+        grid: { rowMin, colMin, rowMax, colMax },
+        pixels: { x, y, width, height }
+      };
+    }
+
+    function buildExportData() {
+      const bounds = computeBounds();
+      const sortedCells = Array.from(cells.entries())
+        .map(([key, cell]) => ({ ...parseKey(key), ...cloneCell(cell) }))
+        .sort((a, b) => a.row - b.row || a.col - b.col);
+
+      return {
+        version: 1,
+        imageName: IMAGE_NAME,
+        imageSize: imageSize,
+        gridSize: GRID_SIZE,
+        labels: {
+          terrain: [...terrainLabels]
+        },
+        palette: {
+          terrain: { ...terrainPalette }
+        },
+        maskBounds: bounds,
+        cells: sortedCells
+      };
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function exportJson() {
+      const data = buildExportData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      downloadBlob(blob, "annotations.json");
+    }
+
+    function exportMask(kind) {
+      const bounds = computeBounds();
+      if (!bounds) {
+        alert("No annotated cells to export.");
+        return;
+      }
+      const mask = document.createElement("canvas");
+      mask.width = bounds.pixels.width;
+      mask.height = bounds.pixels.height;
+      const mctx = mask.getContext("2d");
+      mctx.clearRect(0, 0, mask.width, mask.height);
+
+      for (const [key, cell] of cells.entries()) {
+        const label = cell[kind];
+        if (!label) continue;
+        const { row, col } = parseKey(key);
+        const x = col * GRID_SIZE - bounds.pixels.x;
+        const y = row * GRID_SIZE - bounds.pixels.y;
+        const w = Math.min(GRID_SIZE, imageSize.width - col * GRID_SIZE);
+        const h = Math.min(GRID_SIZE, imageSize.height - row * GRID_SIZE);
+        mctx.fillStyle = colorFor(label, terrainPalette);
+        mctx.fillRect(x, y, w, h);
+      }
+
+      mask.toBlob(blob => {
+        if (!blob) {
+          alert("PNG export failed.");
+          return;
+        }
+        downloadBlob(blob, `${kind}_mask.png`);
+      }, "image/png");
+    }
+
+    function importJson(file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(String(reader.result));
+          if (data.gridSize && data.gridSize !== GRID_SIZE) {
+            throw new Error(`Expected gridSize ${GRID_SIZE}, got ${data.gridSize}`);
+          }
+
+          Object.assign(terrainPalette, data.palette?.terrain || {});
+
+          cells.clear();
+          const incomingCells = Array.isArray(data.cells)
+            ? data.cells
+            : Object.entries(data.cells || {}).map(([key, value]) => ({ ...parseKey(key), ...value }));
+
+          for (const item of incomingCells) {
+            if (!Number.isInteger(item.row) || !Number.isInteger(item.col)) continue;
+            const cell = {};
+            if (item.terrain) cell.terrain = item.terrain;
+            setSparseCell(item.row, item.col, cell);
+          }
+
+          undoStack.length = 0;
+          redoStack.length = 0;
+          renderButtons();
+          updateCount();
+          requestRender();
+        } catch (error) {
+          alert(`Import failed: ${error.message}`);
+        } finally {
+          document.getElementById("importFile").value = "";
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function setupEvents() {
+      window.addEventListener("resize", () => {
+        resizeCanvas();
+        requestRender();
+      });
+      canvas.addEventListener("pointerdown", beginPointer);
+      canvas.addEventListener("pointermove", movePointer);
+      canvas.addEventListener("pointerup", endPointer);
+      canvas.addEventListener("pointercancel", endPointer);
+      canvas.addEventListener("wheel", zoomAt, { passive: false });
+      canvas.addEventListener("contextmenu", event => event.preventDefault());
+
+      window.addEventListener("keydown", event => {
+        if (event.code === "Space") {
+          spaceDown = true;
+          updateSelection();
+          event.preventDefault();
+        } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+          event.preventDefault();
+          event.shiftKey ? redo() : undo();
+        } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y") {
+          event.preventDefault();
+          redo();
+        }
+      });
+      window.addEventListener("keyup", event => {
+        if (event.code === "Space") {
+          spaceDown = false;
+          updateSelection();
+        }
+      });
+
+      document.getElementById("brushSize").addEventListener("input", event => setBrushSize(event.target.value));
+      document.getElementById("brushSizeNumber").addEventListener("change", event => setBrushSize(event.target.value));
+      document.getElementById("brushSizeNumber").addEventListener("input", event => setBrushSize(event.target.value));
+      document.getElementById("undo").addEventListener("click", undo);
+      document.getElementById("redo").addEventListener("click", redo);
+      document.getElementById("exportJson").addEventListener("click", exportJson);
+      document.getElementById("exportTerrain").addEventListener("click", () => exportMask("terrain"));
+      document.getElementById("importFile").addEventListener("change", event => {
+        const file = event.target.files?.[0];
+        if (file) importJson(file);
+      });
+    }
+
+    img.onload = () => {
+      imageSize = { width: img.naturalWidth, height: img.naturalHeight };
+      resizeCanvas();
+      fitImage();
+      updateCount();
+      renderButtons();
+    };
+
+    img.onerror = () => {
+      document.getElementById("viewportStatus").textContent = "Failed to load BHmap.png";
+      alert("Could not load BHmap.png. Keep index.html and BHmap.png in the same folder.");
+    };
+
+    setupEvents();
+    renderButtons();
+    updateCount();
+    window.__BH_ANNOTATOR__ = {
+      get cellCount() { return cells.size; },
+      get brushSize() { return brushSize; },
+      getExportData: buildExportData,
+      getView: () => ({ ...view }),
+      getImageSize: () => ({ ...imageSize })
+    };
+    img.src = IMAGE_NAME;
+  </script>
+</body>
+</html>

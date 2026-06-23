@@ -1,0 +1,2181 @@
+{
+  "version": 1,
+  "imageName": "BHmap.png",
+  "imageSize": {
+    "width": 17973,
+    "height": 10926
+  },
+  "gridSize": 25,
+  "sourceAnnotation": "annotations.json",
+  "generation": {
+    "terrains": [
+      "building",
+      "sports_field",
+      "gate"
+    ],
+    "connectivity": 4,
+    "area": "cellCount"
+  },
+  "regions": [
+    {
+      "id": "building_001",
+      "terrain": "building",
+      "cellCount": 84,
+      "bounds": {
+        "rowMin": 95,
+        "colMin": 172,
+        "rowMax": 108,
+        "colMax": 177
+      },
+      "area": 84,
+      "name": "总配电室",
+      "function": "",
+      "entrances": [
+        {
+          "row": 101,
+          "col": 177
+        },
+        {
+          "row": 102,
+          "col": 177
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_002",
+      "terrain": "building",
+      "cellCount": 176,
+      "bounds": {
+        "rowMin": 98,
+        "colMin": 62,
+        "rowMax": 118,
+        "colMax": 88
+      },
+      "area": 176,
+      "name": "西区5公寓",
+      "function": "dormitory",
+      "entrances": [
+        {
+          "row": 101,
+          "col": 81
+        },
+        {
+          "row": 101,
+          "col": 82
+        },
+        {
+          "row": 110,
+          "col": 65
+        },
+        {
+          "row": 111,
+          "col": 65
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_003",
+      "terrain": "building",
+      "cellCount": 176,
+      "bounds": {
+        "rowMin": 98,
+        "colMin": 74,
+        "rowMax": 118,
+        "colMax": 100
+      },
+      "area": 176,
+      "name": "西区6公寓",
+      "function": "dormitory",
+      "entrances": [
+        {
+          "row": 105,
+          "col": 97
+        },
+        {
+          "row": 106,
+          "col": 97
+        },
+        {
+          "row": 115,
+          "col": 80
+        },
+        {
+          "row": 115,
+          "col": 81
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_004",
+      "terrain": "building",
+      "cellCount": 120,
+      "bounds": {
+        "rowMin": 98,
+        "colMin": 113,
+        "rowMax": 117,
+        "colMax": 118
+      },
+      "area": 120,
+      "name": "唯实1",
+      "function": "hotel",
+      "entrances": [
+        {
+          "row": 109,
+          "col": 118
+        },
+        {
+          "row": 110,
+          "col": 118
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_005",
+      "terrain": "building",
+      "cellCount": 598,
+      "bounds": {
+        "rowMin": 98,
+        "colMin": 124,
+        "rowMax": 131,
+        "colMax": 161
+      },
+      "area": 598,
+      "name": "唯实2",
+      "function": "hotel",
+      "entrances": [
+        {
+          "row": 98,
+          "col": 127
+        },
+        {
+          "row": 107,
+          "col": 152
+        },
+        {
+          "row": 108,
+          "col": 152
+        },
+        {
+          "row": 109,
+          "col": 144
+        },
+        {
+          "row": 109,
+          "col": 152
+        },
+        {
+          "row": 110,
+          "col": 152
+        },
+        {
+          "row": 111,
+          "col": 152
+        },
+        {
+          "row": 112,
+          "col": 152
+        },
+        {
+          "row": 113,
+          "col": 152
+        },
+        {
+          "row": 114,
+          "col": 152
+        },
+        {
+          "row": 115,
+          "col": 152
+        },
+        {
+          "row": 116,
+          "col": 152
+        },
+        {
+          "row": 117,
+          "col": 146
+        },
+        {
+          "row": 119,
+          "col": 161
+        },
+        {
+          "row": 120,
+          "col": 161
+        },
+        {
+          "row": 121,
+          "col": 161
+        },
+        {
+          "row": 122,
+          "col": 161
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_006",
+      "terrain": "building",
+      "cellCount": 115,
+      "bounds": {
+        "rowMin": 114,
+        "colMin": 175,
+        "rowMax": 121,
+        "colMax": 190
+      },
+      "area": 115,
+      "name": "锅炉房",
+      "function": "",
+      "entrances": [
+        {
+          "row": 114,
+          "col": 181
+        },
+        {
+          "row": 114,
+          "col": 182
+        },
+        {
+          "row": 114,
+          "col": 183
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_007",
+      "terrain": "building",
+      "cellCount": 159,
+      "bounds": {
+        "rowMin": 124,
+        "colMin": 112,
+        "rowMax": 130,
+        "colMax": 135
+      },
+      "area": 159,
+      "name": "西区11公寓",
+      "function": "dormitory",
+      "entrances": [
+        {
+          "row": 130,
+          "col": 127
+        },
+        {
+          "row": 130,
+          "col": 128
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_008",
+      "terrain": "building",
+      "cellCount": 176,
+      "bounds": {
+        "rowMin": 133,
+        "colMin": 62,
+        "rowMax": 154,
+        "colMax": 87
+      },
+      "area": 176,
+      "name": "西区7公寓",
+      "function": "dormitory",
+      "entrances": [
+        {
+          "row": 136,
+          "col": 80
+        },
+        {
+          "row": 136,
+          "col": 81
+        },
+        {
+          "row": 146,
+          "col": 65
+        },
+        {
+          "row": 147,
+          "col": 65
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_009",
+      "terrain": "building",
+      "cellCount": 183,
+      "bounds": {
+        "rowMin": 133,
+        "colMin": 73,
+        "rowMax": 154,
+        "colMax": 100
+      },
+      "area": 183,
+      "name": "西区8公寓",
+      "function": "dormitory",
+      "entrances": [
+        {
+          "row": 140,
+          "col": 97
+        },
+        {
+          "row": 141,
+          "col": 97
+        },
+        {
+          "row": 151,
+          "col": 80
+        },
+        {
+          "row": 151,
+          "col": 81
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_010",
+      "terrain": "building",
+      "cellCount": 544,
+      "bounds": {
+        "rowMin": 140,
+        "colMin": 115,
+        "rowMax": 157,
+        "colMax": 145
+      },
+      "area": 544,
+      "name": "西区食堂",
+      "function": "canteen",
+      "entrances": [
+        {
+          "row": 148,
+          "col": 115
+        },
+        {
+          "row": 149,
+          "col": 115
+        },
+        {
+          "row": 150,
+          "col": 115
+        },
+        {
+          "row": 157,
+          "col": 135
+        },
+        {
+          "row": 157,
+          "col": 136
+        },
+        {
+          "row": 157,
+          "col": 137
+        }
+      ],
+      "available": true,
+      "open_time": "06:00",
+      "close_time": "21:00"
+    },
+    {
+      "id": "building_011",
+      "terrain": "building",
+      "cellCount": 149,
+      "bounds": {
+        "rowMin": 148,
+        "colMin": 369,
+        "rowMax": 158,
+        "colMax": 382
+      },
+      "area": 149,
+      "name": "快递点",
+      "function": "service",
+      "entrances": [
+        {
+          "row": 158,
+          "col": 377
+        },
+        {
+          "row": 158,
+          "col": 378
+        },
+        {
+          "row": 158,
+          "col": 379
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_012",
+      "terrain": "building",
+      "cellCount": 219,
+      "bounds": {
+        "rowMin": 162,
+        "colMin": 63,
+        "rowMax": 172,
+        "colMax": 99
+      },
+      "area": 219,
+      "name": "西区9公寓",
+      "function": "dormitory",
+      "entrances": [
+        {
+          "row": 168,
+          "col": 87
+        },
+        {
+          "row": 168,
+          "col": 88
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_013",
+      "terrain": "building",
+      "cellCount": 433,
+      "bounds": {
+        "rowMin": 174,
+        "colMin": 302,
+        "rowMax": 210,
+        "colMax": 330
+      },
+      "area": 433,
+      "name": "东区3公寓",
+      "function": "dormitory",
+      "entrances": [
+        {
+          "row": 190,
+          "col": 319
+        },
+        {
+          "row": 191,
+          "col": 319
+        },
+        {
+          "row": 192,
+          "col": 319
+        },
+        {
+          "row": 193,
+          "col": 319
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_014",
+      "terrain": "building",
+      "cellCount": 415,
+      "bounds": {
+        "rowMin": 174,
+        "colMin": 337,
+        "rowMax": 210,
+        "colMax": 357
+      },
+      "area": 415,
+      "name": "东区4公寓",
+      "function": "dormitory",
+      "entrances": [
+        {
+          "row": 191,
+          "col": 341
+        },
+        {
+          "row": 192,
+          "col": 341
+        },
+        {
+          "row": 193,
+          "col": 341
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_015",
+      "terrain": "building",
+      "cellCount": 518,
+      "bounds": {
+        "rowMin": 175,
+        "colMin": 366,
+        "rowMax": 217,
+        "colMax": 379
+      },
+      "area": 518,
+      "name": "东区食堂",
+      "function": "canteen",
+      "entrances": [
+        {
+          "row": 185,
+          "col": 366
+        },
+        {
+          "row": 186,
+          "col": 366
+        },
+        {
+          "row": 207,
+          "col": 366
+        },
+        {
+          "row": 208,
+          "col": 366
+        }
+      ],
+      "available": true,
+      "open_time": "06:00",
+      "close_time": "21:00"
+    },
+    {
+      "id": "building_016",
+      "terrain": "building",
+      "cellCount": 90,
+      "bounds": {
+        "rowMin": 179,
+        "colMin": 107,
+        "rowMax": 184,
+        "colMax": 121
+      },
+      "area": 90,
+      "name": "科研八号楼",
+      "function": "laboratory",
+      "entrances": [
+        {
+          "row": 184,
+          "col": 113
+        },
+        {
+          "row": 184,
+          "col": 114
+        },
+        {
+          "row": 184,
+          "col": 115
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_017",
+      "terrain": "building",
+      "cellCount": 574,
+      "bounds": {
+        "rowMin": 181,
+        "colMin": 143,
+        "rowMax": 199,
+        "colMax": 177
+      },
+      "area": 574,
+      "name": "风洞实验室",
+      "function": "laboratory",
+      "entrances": [
+        {
+          "row": 181,
+          "col": 164
+        },
+        {
+          "row": 181,
+          "col": 165
+        },
+        {
+          "row": 181,
+          "col": 166
+        },
+        {
+          "row": 181,
+          "col": 167
+        },
+        {
+          "row": 181,
+          "col": 168
+        },
+        {
+          "row": 196,
+          "col": 177
+        },
+        {
+          "row": 197,
+          "col": 177
+        },
+        {
+          "row": 198,
+          "col": 177
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_018",
+      "terrain": "building",
+      "cellCount": 1130,
+      "bounds": {
+        "rowMin": 182,
+        "colMin": 179,
+        "rowMax": 199,
+        "colMax": 269
+      },
+      "area": 1130,
+      "name": "国实A/B座",
+      "function": "laboratory",
+      "entrances": [
+        {
+          "row": 182,
+          "col": 215
+        },
+        {
+          "row": 182,
+          "col": 216
+        },
+        {
+          "row": 182,
+          "col": 217
+        },
+        {
+          "row": 182,
+          "col": 218
+        },
+        {
+          "row": 182,
+          "col": 219
+        },
+        {
+          "row": 182,
+          "col": 220
+        },
+        {
+          "row": 196,
+          "col": 215
+        },
+        {
+          "row": 196,
+          "col": 216
+        },
+        {
+          "row": 196,
+          "col": 217
+        },
+        {
+          "row": 196,
+          "col": 218
+        },
+        {
+          "row": 196,
+          "col": 219
+        },
+        {
+          "row": 196,
+          "col": 220
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_019",
+      "terrain": "building",
+      "cellCount": 256,
+      "bounds": {
+        "rowMin": 188,
+        "colMin": 66,
+        "rowMax": 203,
+        "colMax": 99
+      },
+      "area": 256,
+      "name": "西区10公寓",
+      "function": "dormitory",
+      "entrances": [
+        {
+          "row": 191,
+          "col": 82
+        },
+        {
+          "row": 191,
+          "col": 83
+        },
+        {
+          "row": 194,
+          "col": 95
+        },
+        {
+          "row": 195,
+          "col": 70
+        },
+        {
+          "row": 195,
+          "col": 95
+        },
+        {
+          "row": 196,
+          "col": 70
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_020",
+      "terrain": "building",
+      "cellCount": 987,
+      "bounds": {
+        "rowMin": 209,
+        "colMin": 126,
+        "rowMax": 241,
+        "colMax": 157
+      },
+      "area": 987,
+      "name": "国实F座",
+      "function": "laboratory",
+      "entrances": [
+        {
+          "row": 209,
+          "col": 139
+        },
+        {
+          "row": 209,
+          "col": 140
+        },
+        {
+          "row": 209,
+          "col": 141
+        },
+        {
+          "row": 238,
+          "col": 126
+        },
+        {
+          "row": 238,
+          "col": 157
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_021",
+      "terrain": "building",
+      "cellCount": 894,
+      "bounds": {
+        "rowMin": 210,
+        "colMin": 160,
+        "rowMax": 241,
+        "colMax": 189
+      },
+      "area": 894,
+      "name": "国实D座",
+      "function": "laboratory",
+      "entrances": [
+        {
+          "row": 210,
+          "col": 176
+        },
+        {
+          "row": 210,
+          "col": 177
+        },
+        {
+          "row": 210,
+          "col": 178
+        },
+        {
+          "row": 238,
+          "col": 160
+        },
+        {
+          "row": 238,
+          "col": 189
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_022",
+      "terrain": "building",
+      "cellCount": 231,
+      "bounds": {
+        "rowMin": 212,
+        "colMin": 72,
+        "rowMax": 222,
+        "colMax": 92
+      },
+      "area": 231,
+      "name": "科研七号楼",
+      "function": "laboratory",
+      "entrances": [],
+      "available": false,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_023",
+      "terrain": "building",
+      "cellCount": 759,
+      "bounds": {
+        "rowMin": 212,
+        "colMin": 246,
+        "rowMax": 244,
+        "colMax": 268
+      },
+      "area": 759,
+      "name": "图书馆",
+      "function": "library",
+      "entrances": [
+        {
+          "row": 244,
+          "col": 255
+        },
+        {
+          "row": 244,
+          "col": 256
+        },
+        {
+          "row": 244,
+          "col": 257
+        },
+        {
+          "row": 244,
+          "col": 258
+        },
+        {
+          "row": 244,
+          "col": 259
+        }
+      ],
+      "available": true,
+      "open_time": "07:00",
+      "close_time": "22:00"
+    },
+    {
+      "id": "building_024",
+      "terrain": "building",
+      "cellCount": 131,
+      "bounds": {
+        "rowMin": 222,
+        "colMin": 366,
+        "rowMax": 233,
+        "colMax": 378
+      },
+      "area": 131,
+      "name": "校医院",
+      "function": "hospital",
+      "entrances": [
+        {
+          "row": 229,
+          "col": 368
+        },
+        {
+          "row": 230,
+          "col": 368
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_025",
+      "terrain": "building",
+      "cellCount": 213,
+      "bounds": {
+        "rowMin": 223,
+        "colMin": 301,
+        "rowMax": 242,
+        "colMax": 326
+      },
+      "area": 213,
+      "name": "东区2公寓",
+      "function": "dormitory",
+      "entrances": [
+        {
+          "row": 231,
+          "col": 316
+        },
+        {
+          "row": 232,
+          "col": 316
+        },
+        {
+          "row": 233,
+          "col": 316
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_026",
+      "terrain": "building",
+      "cellCount": 257,
+      "bounds": {
+        "rowMin": 223,
+        "colMin": 333,
+        "rowMax": 242,
+        "colMax": 358
+      },
+      "area": 257,
+      "name": "东区1公寓",
+      "function": "dormitory",
+      "entrances": [
+        {
+          "row": 231,
+          "col": 341
+        },
+        {
+          "row": 232,
+          "col": 341
+        },
+        {
+          "row": 233,
+          "col": 341
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_027",
+      "terrain": "building",
+      "cellCount": 252,
+      "bounds": {
+        "rowMin": 227,
+        "colMin": 70,
+        "rowMax": 247,
+        "colMax": 81
+      },
+      "area": 252,
+      "name": "科研六号楼",
+      "function": "laboratory",
+      "entrances": [],
+      "available": false,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_028",
+      "terrain": "building",
+      "cellCount": 165,
+      "bounds": {
+        "rowMin": 242,
+        "colMin": 90,
+        "rowMax": 252,
+        "colMax": 104
+      },
+      "area": 165,
+      "name": "科研五号楼",
+      "function": "laboratory",
+      "entrances": [],
+      "available": false,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_029",
+      "terrain": "building",
+      "cellCount": 181,
+      "bounds": {
+        "rowMin": 269,
+        "colMin": 90,
+        "rowMax": 281,
+        "colMax": 104
+      },
+      "area": 181,
+      "name": "科研一号楼",
+      "function": "laboratory",
+      "entrances": [
+        {
+          "row": 281,
+          "col": 94
+        },
+        {
+          "row": 281,
+          "col": 95
+        },
+        {
+          "row": 281,
+          "col": 96
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_030",
+      "terrain": "building",
+      "cellCount": 106,
+      "bounds": {
+        "rowMin": 272,
+        "colMin": 165,
+        "rowMax": 285,
+        "colMax": 172
+      },
+      "area": 106,
+      "name": "6号实验楼",
+      "function": "laboratory",
+      "entrances": [
+        {
+          "row": 273,
+          "col": 170
+        },
+        {
+          "row": 274,
+          "col": 170
+        },
+        {
+          "row": 284,
+          "col": 172
+        },
+        {
+          "row": 285,
+          "col": 172
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_031",
+      "terrain": "building",
+      "cellCount": 119,
+      "bounds": {
+        "rowMin": 272,
+        "colMin": 174,
+        "rowMax": 278,
+        "colMax": 190
+      },
+      "area": 119,
+      "name": "7号实验楼",
+      "function": "laboratory",
+      "entrances": [
+        {
+          "row": 272,
+          "col": 174
+        },
+        {
+          "row": 272,
+          "col": 175
+        },
+        {
+          "row": 278,
+          "col": 181
+        },
+        {
+          "row": 278,
+          "col": 182
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_032",
+      "terrain": "building",
+      "cellCount": 729,
+      "bounds": {
+        "rowMin": 274,
+        "colMin": 69,
+        "rowMax": 328,
+        "colMax": 89
+      },
+      "area": 729,
+      "name": "科研二/三号楼",
+      "function": "laboratory",
+      "entrances": [
+        {
+          "row": 282,
+          "col": 81
+        },
+        {
+          "row": 283,
+          "col": 81
+        },
+        {
+          "row": 284,
+          "col": 81
+        },
+        {
+          "row": 303,
+          "col": 81
+        },
+        {
+          "row": 304,
+          "col": 81
+        },
+        {
+          "row": 305,
+          "col": 81
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_033",
+      "terrain": "building",
+      "cellCount": 325,
+      "bounds": {
+        "rowMin": 284,
+        "colMin": 244,
+        "rowMax": 306,
+        "colMax": 269
+      },
+      "area": 325,
+      "name": "教3",
+      "function": "teaching",
+      "entrances": [
+        {
+          "row": 290,
+          "col": 269
+        },
+        {
+          "row": 291,
+          "col": 269
+        },
+        {
+          "row": 292,
+          "col": 269
+        }
+      ],
+      "available": true,
+      "open_time": "07:00",
+      "close_time": "22:00"
+    },
+    {
+      "id": "building_034",
+      "terrain": "building",
+      "cellCount": 168,
+      "bounds": {
+        "rowMin": 287,
+        "colMin": 165,
+        "rowMax": 293,
+        "colMax": 188
+      },
+      "area": 168,
+      "name": "5号实验楼",
+      "function": "laboratory",
+      "entrances": [
+        {
+          "row": 287,
+          "col": 176
+        },
+        {
+          "row": 287,
+          "col": 177
+        },
+        {
+          "row": 293,
+          "col": 176
+        },
+        {
+          "row": 293,
+          "col": 177
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_035",
+      "terrain": "building",
+      "cellCount": 200,
+      "bounds": {
+        "rowMin": 298,
+        "colMin": 232,
+        "rowMax": 317,
+        "colMax": 247
+      },
+      "area": 200,
+      "name": "教2",
+      "function": "teaching",
+      "entrances": [
+        {
+          "row": 311,
+          "col": 232
+        },
+        {
+          "row": 312,
+          "col": 232
+        },
+        {
+          "row": 313,
+          "col": 232
+        }
+      ],
+      "available": false,
+      "open_time": "07:00",
+      "close_time": "22:00"
+    },
+    {
+      "id": "building_036",
+      "terrain": "building",
+      "cellCount": 220,
+      "bounds": {
+        "rowMin": 300,
+        "colMin": 161,
+        "rowMax": 308,
+        "colMax": 188
+      },
+      "area": 220,
+      "name": "4号实验楼",
+      "function": "laboratory",
+      "entrances": [
+        {
+          "row": 302,
+          "col": 175
+        },
+        {
+          "row": 302,
+          "col": 176
+        },
+        {
+          "row": 307,
+          "col": 172
+        },
+        {
+          "row": 307,
+          "col": 173
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_037",
+      "terrain": "building",
+      "cellCount": 240,
+      "bounds": {
+        "rowMin": 307,
+        "colMin": 97,
+        "rowMax": 324,
+        "colMax": 110
+      },
+      "area": 240,
+      "name": "科研四号楼",
+      "function": "laboratory",
+      "entrances": [
+        {
+          "row": 307,
+          "col": 103
+        },
+        {
+          "row": 307,
+          "col": 104
+        },
+        {
+          "row": 307,
+          "col": 105
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_038",
+      "terrain": "building",
+      "cellCount": 180,
+      "bounds": {
+        "rowMin": 308,
+        "colMin": 255,
+        "rowMax": 324,
+        "colMax": 269
+      },
+      "area": 180,
+      "name": "教4",
+      "function": "teaching",
+      "entrances": [
+        {
+          "row": 312,
+          "col": 269
+        },
+        {
+          "row": 313,
+          "col": 269
+        },
+        {
+          "row": 314,
+          "col": 269
+        }
+      ],
+      "available": true,
+      "open_time": "07:00",
+      "close_time": "22:00"
+    },
+    {
+      "id": "building_039",
+      "terrain": "building",
+      "cellCount": 183,
+      "bounds": {
+        "rowMin": 318,
+        "colMin": 164,
+        "rowMax": 322,
+        "colMax": 200
+      },
+      "area": 183,
+      "name": "3号实验楼",
+      "function": "laboratory",
+      "entrances": [
+        {
+          "row": 319,
+          "col": 182
+        },
+        {
+          "row": 319,
+          "col": 183
+        },
+        {
+          "row": 322,
+          "col": 182
+        },
+        {
+          "row": 322,
+          "col": 183
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_040",
+      "terrain": "building",
+      "cellCount": 184,
+      "bounds": {
+        "rowMin": 319,
+        "colMin": 232,
+        "rowMax": 339,
+        "colMax": 245
+      },
+      "area": 184,
+      "name": "教1",
+      "function": "teaching",
+      "entrances": [
+        {
+          "row": 333,
+          "col": 232
+        },
+        {
+          "row": 334,
+          "col": 232
+        },
+        {
+          "row": 335,
+          "col": 232
+        }
+      ],
+      "available": true,
+      "open_time": "07:00",
+      "close_time": "22:00"
+    },
+    {
+      "id": "building_041",
+      "terrain": "building",
+      "cellCount": 257,
+      "bounds": {
+        "rowMin": 322,
+        "colMin": 247,
+        "rowMax": 339,
+        "colMax": 269
+      },
+      "area": 257,
+      "name": "教5",
+      "function": "teaching",
+      "entrances": [
+        {
+          "row": 333,
+          "col": 269
+        },
+        {
+          "row": 334,
+          "col": 269
+        },
+        {
+          "row": 335,
+          "col": 269
+        }
+      ],
+      "available": true,
+      "open_time": "07:00",
+      "close_time": "22:00"
+    },
+    {
+      "id": "building_042",
+      "terrain": "building",
+      "cellCount": 181,
+      "bounds": {
+        "rowMin": 324,
+        "colMin": 165,
+        "rowMax": 338,
+        "colMax": 184
+      },
+      "area": 181,
+      "name": "2号实验楼",
+      "function": "laboratory",
+      "entrances": [
+        {
+          "row": 324,
+          "col": 172
+        },
+        {
+          "row": 325,
+          "col": 172
+        },
+        {
+          "row": 337,
+          "col": 169
+        },
+        {
+          "row": 338,
+          "col": 169
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_043",
+      "terrain": "building",
+      "cellCount": 86,
+      "bounds": {
+        "rowMin": 326,
+        "colMin": 187,
+        "rowMax": 336,
+        "colMax": 194
+      },
+      "area": 86,
+      "name": "1号实验楼",
+      "function": "laboratory",
+      "entrances": [
+        {
+          "row": 326,
+          "col": 187
+        },
+        {
+          "row": 327,
+          "col": 187
+        },
+        {
+          "row": 335,
+          "col": 193
+        },
+        {
+          "row": 336,
+          "col": 193
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_044",
+      "terrain": "building",
+      "cellCount": 360,
+      "bounds": {
+        "rowMin": 332,
+        "colMin": 301,
+        "rowMax": 355,
+        "colMax": 315
+      },
+      "area": 360,
+      "name": "咏曼",
+      "function": "hall",
+      "entrances": [
+        {
+          "row": 336,
+          "col": 301
+        },
+        {
+          "row": 337,
+          "col": 301
+        },
+        {
+          "row": 347,
+          "col": 301
+        },
+        {
+          "row": 348,
+          "col": 301
+        }
+      ],
+      "available": true,
+      "open_time": "08:00",
+      "close_time": "22:00"
+    },
+    {
+      "id": "building_045",
+      "terrain": "building",
+      "cellCount": 386,
+      "bounds": {
+        "rowMin": 336,
+        "colMin": 75,
+        "rowMax": 371,
+        "colMax": 89
+      },
+      "area": 386,
+      "name": "10号实验楼",
+      "function": "laboratory",
+      "entrances": [
+        {
+          "row": 338,
+          "col": 75
+        },
+        {
+          "row": 339,
+          "col": 75
+        },
+        {
+          "row": 346,
+          "col": 83
+        },
+        {
+          "row": 347,
+          "col": 83
+        },
+        {
+          "row": 365,
+          "col": 83
+        },
+        {
+          "row": 366,
+          "col": 83
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_046",
+      "terrain": "building",
+      "cellCount": 329,
+      "bounds": {
+        "rowMin": 345,
+        "colMin": 92,
+        "rowMax": 371,
+        "colMax": 112
+      },
+      "area": 329,
+      "name": "9号实验楼",
+      "function": "laboratory",
+      "entrances": [
+        {
+          "row": 355,
+          "col": 106
+        },
+        {
+          "row": 356,
+          "col": 106
+        },
+        {
+          "row": 362,
+          "col": 98
+        },
+        {
+          "row": 362,
+          "col": 99
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_047",
+      "terrain": "building",
+      "cellCount": 498,
+      "bounds": {
+        "rowMin": 353,
+        "colMin": 122,
+        "rowMax": 371,
+        "colMax": 160
+      },
+      "area": 498,
+      "name": "8号实验楼",
+      "function": "laboratory",
+      "entrances": [
+        {
+          "row": 353,
+          "col": 126
+        },
+        {
+          "row": 353,
+          "col": 145
+        },
+        {
+          "row": 361,
+          "col": 125
+        },
+        {
+          "row": 362,
+          "col": 125
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "building_048",
+      "terrain": "building",
+      "cellCount": 344,
+      "bounds": {
+        "rowMin": 358,
+        "colMin": 299,
+        "rowMax": 371,
+        "colMax": 324
+      },
+      "area": 344,
+      "name": "体育馆",
+      "function": "sport",
+      "entrances": [
+        {
+          "row": 364,
+          "col": 301
+        },
+        {
+          "row": 365,
+          "col": 301
+        },
+        {
+          "row": 366,
+          "col": 301
+        }
+      ],
+      "available": true,
+      "open_time": "08:00",
+      "close_time": "22:00"
+    },
+    {
+      "id": "gate_001",
+      "terrain": "gate",
+      "cellCount": 4,
+      "bounds": {
+        "rowMin": 86,
+        "colMin": 165,
+        "rowMax": 86,
+        "colMax": 168
+      },
+      "area": 4,
+      "name": "北门",
+      "function": "",
+      "entrances": [],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "gate_002",
+      "terrain": "gate",
+      "cellCount": 7,
+      "bounds": {
+        "rowMin": 86,
+        "colMin": 289,
+        "rowMax": 86,
+        "colMax": 295
+      },
+      "area": 7,
+      "name": "北二门",
+      "function": "",
+      "entrances": [],
+      "available": false,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "gate_003",
+      "terrain": "gate",
+      "cellCount": 38,
+      "bounds": {
+        "rowMin": 155,
+        "colMin": 388,
+        "rowMax": 175,
+        "colMax": 389
+      },
+      "area": 38,
+      "name": "东二门",
+      "function": "",
+      "entrances": [],
+      "available": false,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "gate_004",
+      "terrain": "gate",
+      "cellCount": 40,
+      "bounds": {
+        "rowMin": 239,
+        "colMin": 388,
+        "rowMax": 259,
+        "colMax": 389
+      },
+      "area": 40,
+      "name": "东门",
+      "function": "",
+      "entrances": [],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "gate_005",
+      "terrain": "gate",
+      "cellCount": 8,
+      "bounds": {
+        "rowMin": 259,
+        "colMin": 59,
+        "rowMax": 266,
+        "colMax": 59
+      },
+      "area": 8,
+      "name": "西门",
+      "function": "",
+      "entrances": [],
+      "available": false,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "gate_006",
+      "terrain": "gate",
+      "cellCount": 16,
+      "bounds": {
+        "rowMin": 393,
+        "colMin": 285,
+        "rowMax": 394,
+        "colMax": 293
+      },
+      "area": 16,
+      "name": "南二门",
+      "function": "",
+      "entrances": [],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "gate_007",
+      "terrain": "gate",
+      "cellCount": 55,
+      "bounds": {
+        "rowMin": 394,
+        "colMin": 204,
+        "rowMax": 395,
+        "colMax": 232
+      },
+      "area": 55,
+      "name": "南门",
+      "function": "",
+      "entrances": [],
+      "available": false,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "sports_field_001",
+      "terrain": "sports_field",
+      "cellCount": 96,
+      "bounds": {
+        "rowMin": 118,
+        "colMin": 201,
+        "rowMax": 125,
+        "colMax": 212
+      },
+      "area": 96,
+      "name": "西区排球场",
+      "function": "volleyball",
+      "entrances": [
+        {
+          "row": 125,
+          "col": 211
+        },
+        {
+          "row": 125,
+          "col": 212
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "sports_field_002",
+      "terrain": "sports_field",
+      "cellCount": 372,
+      "bounds": {
+        "rowMin": 127,
+        "colMin": 189,
+        "rowMax": 147,
+        "colMax": 212
+      },
+      "area": 372,
+      "name": "西区篮球场",
+      "function": "basketball",
+      "entrances": [
+        {
+          "row": 127,
+          "col": 211
+        },
+        {
+          "row": 127,
+          "col": 212
+        },
+        {
+          "row": 136,
+          "col": 189
+        },
+        {
+          "row": 136,
+          "col": 190
+        },
+        {
+          "row": 147,
+          "col": 210
+        },
+        {
+          "row": 147,
+          "col": 211
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "sports_field_003",
+      "terrain": "sports_field",
+      "cellCount": 234,
+      "bounds": {
+        "rowMin": 139,
+        "colMin": 174,
+        "rowMax": 147,
+        "colMax": 199
+      },
+      "area": 234,
+      "name": "西区足球场",
+      "function": "football",
+      "entrances": [
+        {
+          "row": 139,
+          "col": 185
+        },
+        {
+          "row": 139,
+          "col": 186
+        },
+        {
+          "row": 139,
+          "col": 187
+        },
+        {
+          "row": 139,
+          "col": 188
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "sports_field_004",
+      "terrain": "sports_field",
+      "cellCount": 195,
+      "bounds": {
+        "rowMin": 281,
+        "colMin": 295,
+        "rowMax": 283,
+        "colMax": 359
+      },
+      "area": 195,
+      "name": "TD线",
+      "function": "exercise",
+      "entrances": [
+        {
+          "row": 281,
+          "col": 295
+        },
+        {
+          "row": 281,
+          "col": 359
+        },
+        {
+          "row": 282,
+          "col": 295
+        },
+        {
+          "row": 282,
+          "col": 359
+        },
+        {
+          "row": 283,
+          "col": 295
+        },
+        {
+          "row": 283,
+          "col": 359
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "sports_field_005",
+      "terrain": "sports_field",
+      "cellCount": 341,
+      "bounds": {
+        "rowMin": 288,
+        "colMin": 298,
+        "rowMax": 318,
+        "colMax": 308
+      },
+      "area": 341,
+      "name": "东区篮球场1",
+      "function": "basketball",
+      "entrances": [
+        {
+          "row": 288,
+          "col": 308
+        },
+        {
+          "row": 318,
+          "col": 308
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "sports_field_006",
+      "terrain": "sports_field",
+      "cellCount": 341,
+      "bounds": {
+        "rowMin": 288,
+        "colMin": 310,
+        "rowMax": 318,
+        "colMax": 320
+      },
+      "area": 341,
+      "name": "东区篮球场2",
+      "function": "basketball",
+      "entrances": [
+        {
+          "row": 288,
+          "col": 310
+        },
+        {
+          "row": 318,
+          "col": 310
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "sports_field_007",
+      "terrain": "sports_field",
+      "cellCount": 306,
+      "bounds": {
+        "rowMin": 288,
+        "colMin": 325,
+        "rowMax": 305,
+        "colMax": 341
+      },
+      "area": 306,
+      "name": "东区排球场1",
+      "function": "valleyball",
+      "entrances": [
+        {
+          "row": 288,
+          "col": 341
+        },
+        {
+          "row": 305,
+          "col": 341
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "sports_field_008",
+      "terrain": "sports_field",
+      "cellCount": 90,
+      "bounds": {
+        "rowMin": 288,
+        "colMin": 343,
+        "rowMax": 305,
+        "colMax": 347
+      },
+      "area": 90,
+      "name": "东区排球场2",
+      "function": "valleyball",
+      "entrances": [
+        {
+          "row": 288,
+          "col": 343
+        },
+        {
+          "row": 305,
+          "col": 343
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "sports_field_009",
+      "terrain": "sports_field",
+      "cellCount": 420,
+      "bounds": {
+        "rowMin": 288,
+        "colMin": 350,
+        "rowMax": 302,
+        "colMax": 377
+      },
+      "area": 420,
+      "name": "网球场",
+      "function": "tennisball",
+      "entrances": [
+        {
+          "row": 288,
+          "col": 363
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "sports_field_010",
+      "terrain": "sports_field",
+      "cellCount": 153,
+      "bounds": {
+        "rowMin": 307,
+        "colMin": 327,
+        "rowMax": 315,
+        "colMax": 343
+      },
+      "area": 153,
+      "name": "运动器械",
+      "function": "exercise",
+      "entrances": [
+        {
+          "row": 307,
+          "col": 327
+        },
+        {
+          "row": 307,
+          "col": 343
+        },
+        {
+          "row": 315,
+          "col": 327
+        },
+        {
+          "row": 315,
+          "col": 343
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    },
+    {
+      "id": "sports_field_011",
+      "terrain": "sports_field",
+      "cellCount": 2064,
+      "bounds": {
+        "rowMin": 307,
+        "colMin": 335,
+        "rowMax": 367,
+        "colMax": 379
+      },
+      "area": 2064,
+      "name": "操场",
+      "function": "playground",
+      "entrances": [
+        {
+          "row": 318,
+          "col": 344
+        },
+        {
+          "row": 319,
+          "col": 344
+        },
+        {
+          "row": 320,
+          "col": 344
+        },
+        {
+          "row": 347,
+          "col": 373
+        },
+        {
+          "row": 348,
+          "col": 373
+        },
+        {
+          "row": 349,
+          "col": 373
+        }
+      ],
+      "available": true,
+      "open_time": "00:00",
+      "close_time": "23:59"
+    }
+  ]
+}

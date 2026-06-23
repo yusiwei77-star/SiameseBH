@@ -1,0 +1,28 @@
+# Checkpoint (large, auto-generated)
+.checkpoint.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# IDE / editor
+.claude/
+.codex/
+.agents/
+.playwright-cli/
+
+# Debug logs
+debug/*.log
+debug/*.out.log
+debug/*.err.log
+debug/*.pid
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Server logs
+server.log
+nul
