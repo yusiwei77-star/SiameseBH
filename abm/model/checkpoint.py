@@ -44,6 +44,7 @@ def save_model_checkpoint(model, path: str | Path) -> None:
         "student_count": len(model.students),
         "agents": [agent_checkpoint_data(s) for s in model.students],
         "metrics_history": model._metrics_history,
+        "hourly_archive": model._hourly_archive,
         "slot_attended_today": [list(pair) for pair in model._slot_attended_today],
         "attendance_day": model._attendance_day,
         "outer_mind_relationships": [
@@ -51,7 +52,6 @@ def save_model_checkpoint(model, path: str | Path) -> None:
                 "source_id": tie.source_id,
                 "target_id": tie.target_id,
                 "closeness": tie.closeness,
-                "trust": tie.trust,
             }
             for tie in model.outer_mind.ties()
         ],
@@ -203,6 +203,10 @@ def load_model_checkpoint(
         data.get("metrics_history", []),
         seconds_per_step=model.seconds_per_step,
     )
+    model._hourly_archive = normalize_metrics_history(
+        data.get("hourly_archive", []),
+        seconds_per_step=model.seconds_per_step,
+    )
     model._slot_attended_today = {tuple(pair) for pair in data.get("slot_attended_today", [])}
     model._attendance_day = int(data.get("attendance_day", model.day))
     for tie in data.get("outer_mind_relationships", []):
@@ -210,7 +214,6 @@ def load_model_checkpoint(
             int(tie["source_id"]),
             int(tie["target_id"]),
             closeness=float(tie["closeness"]),
-            trust=float(tie["trust"]),
         )
 
     return model

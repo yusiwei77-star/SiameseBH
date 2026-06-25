@@ -109,7 +109,7 @@ class VisualRuntime:
 
     def metrics_history(self, tail: int | None = None) -> dict[str, Any]:
         with self.lock:
-            return {"metrics_history": self.model.metrics_history(tail=tail)}
+            return self.model.metrics_history(tail=tail)
 
     def _advance_locked(self) -> None:
         if not self.playing:

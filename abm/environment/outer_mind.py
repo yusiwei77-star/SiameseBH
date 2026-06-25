@@ -15,14 +15,11 @@ def _clamp01(value: float) -> float:
 @dataclass(frozen=True)
 class OuterMindConfig:
     baseline_closeness: float = 0.03
-    baseline_trust: float = 0.03
     closeness_decay_per_hour: float = 0.006
-    trust_decay_per_hour: float = 0.003
     closeness_gain_per_hour: float = 0.10
     closeness_compatibility_weight: float = 0.65
     closeness_mirror_weight: float = 0.35
     closeness_gap_cooling_per_hour: float = 0.05
-    trust_gain_per_hour: float = 0.08
     social_contribution_gain_per_hour: float = 0.12
     social_return_gain_per_hour: float = 0.18
     social_contribution_decay_per_hour: float = 0.70
@@ -41,12 +38,11 @@ class SocialTie:
     source_id: int
     target_id: int
     closeness: float
-    trust: float
 
 
 @dataclass(frozen=True)
 class OuterMindDelta:
-    relationship_changes: dict[tuple[int, int], tuple[float, float]] = field(default_factory=dict)
+    relationship_changes: dict[tuple[int, int], float] = field(default_factory=dict)
     social_contribution_changes: dict[int, float] = field(default_factory=dict)
     social_return_changes: dict[int, float] = field(default_factory=dict)
     extrinsic_satisfaction_changes: dict[int, float] = field(default_factory=dict)
@@ -59,28 +55,25 @@ class OuterMindDynamics:
 
     def __init__(self, config: OuterMindConfig | None = None) -> None:
         self.config = config or OuterMindConfig()
-        self._relationships: dict[tuple[int, int], tuple[float, float]] = {}
+        self._relationships: dict[tuple[int, int], float] = {}
 
     def ties(self) -> tuple[SocialTie, ...]:
         return tuple(
-            SocialTie(source, target, closeness, trust)
-            for (source, target), (closeness, trust) in sorted(self._relationships.items())
+            SocialTie(source, target, closeness)
+            for (source, target), closeness in sorted(self._relationships.items())
         )
 
-    def relationship(self, source_id: int, target_id: int) -> tuple[float, float]:
+    def relationship(self, source_id: int, target_id: int) -> float:
         return self._relationships.get(
             (source_id, target_id),
-            (self.config.baseline_closeness, self.config.baseline_trust),
+            self.config.baseline_closeness,
         )
 
     def closeness(self, source_id: int, target_id: int) -> float:
-        return self.relationship(source_id, target_id)[0]
+        return self.relationship(source_id, target_id)
 
-    def trust(self, source_id: int, target_id: int) -> float:
-        return self.relationship(source_id, target_id)[1]
-
-    def set_relationship(self, source_id: int, target_id: int, *, closeness: float, trust: float) -> None:
-        self._relationships[(source_id, target_id)] = (_clamp01(closeness), _clamp01(trust))
+    def set_relationship(self, source_id: int, target_id: int, *, closeness: float) -> None:
+        self._relationships[(source_id, target_id)] = _clamp01(closeness)
 
     def advance(self, agents: Iterable[object], seconds: int) -> OuterMindDelta:
         hours = max(0, seconds) / 3600.0
@@ -133,7 +126,7 @@ class OuterMindDynamics:
         agent: object,
         partners: list[object],
         hours: float,
-        relationships_before_interaction: dict[tuple[int, int], tuple[float, float]],
+        relationships_before_interaction: dict[tuple[int, int], float],
     ) -> None:
         state: StudentState = agent.state
         trait: StudentTrait = agent.trait
@@ -161,22 +154,21 @@ class OuterMindDynamics:
         source: object,
         target: object,
         hours: float,
-        relationships_before_interaction: dict[tuple[int, int], tuple[float, float]],
+        relationships_before_interaction: dict[tuple[int, int], float],
     ) -> None:
         source_id = int(source.unique_id)
         target_id = int(target.unique_id)
-        before_closeness, before_trust = self._relationship_from(
+        before_closeness = self._relationship_from(
             relationships_before_interaction,
             source_id,
             target_id,
         )
-        reverse_closeness, _ = self._relationship_from(
+        reverse_closeness = self._relationship_from(
             relationships_before_interaction,
             target_id,
             source_id,
         )
         compatibility = self.compatibility(source.trait, target.trait)
-        target_agreeableness = _clamp01(target.trait.personality.get("agreeableness", 0.5))
         closeness_drive = _clamp01(
             self.config.closeness_compatibility_weight * compatibility
             + self.config.closeness_mirror_weight * reverse_closeness
@@ -185,11 +177,7 @@ class OuterMindDynamics:
             before_closeness
             + (1.0 - before_closeness) * self.config.closeness_gain_per_hour * closeness_drive * hours
         )
-        trust = _clamp01(
-            before_trust
-            + (1.0 - before_trust) * self.config.trust_gain_per_hour * target_agreeableness * hours
-        )
-        self._relationships[(source_id, target_id)] = (closeness, trust)
+        self._relationships[(source_id, target_id)] = closeness
 
     def _receive_feedback(self, agent: object, partner: object, hours: float) -> None:
         partner_state: StudentState = partner.state
@@ -205,33 +193,32 @@ class OuterMindDynamics:
 
     def _decay_relationships(self, active_directed_keys: set[tuple[int, int]], hours: float) -> None:
         closeness_decay = math.exp(-self.config.closeness_decay_per_hour * hours)
-        trust_decay = math.exp(-self.config.trust_decay_per_hour * hours)
-        for key, (closeness, trust) in list(self._relationships.items()):
+        for key, closeness in list(self._relationships.items()):
             if key in active_directed_keys:
                 continue
-            self._relationships[key] = (_clamp01(closeness * closeness_decay), _clamp01(trust * trust_decay))
+            self._relationships[key] = _clamp01(closeness * closeness_decay)
 
     def _apply_cognitive_dissonance(self, hours: float) -> None:
         if hours <= 0.0:
             return
         for source_id, target_id in list(self._relationships):
-            closeness, trust = self.relationship(source_id, target_id)
+            closeness = self.relationship(source_id, target_id)
             reverse_closeness = self.closeness(target_id, source_id)
             gap = closeness - reverse_closeness
             if gap <= 0.0:
                 continue
             cooled = _clamp01(closeness - self.config.closeness_gap_cooling_per_hour * gap * hours)
-            self._relationships[(source_id, target_id)] = (cooled, trust)
+            self._relationships[(source_id, target_id)] = cooled
 
     def _relationship_from(
         self,
-        relationships: dict[tuple[int, int], tuple[float, float]],
+        relationships: dict[tuple[int, int], float],
         source_id: int,
         target_id: int,
-    ) -> tuple[float, float]:
+    ) -> float:
         return relationships.get(
             (source_id, target_id),
-            (self.config.baseline_closeness, self.config.baseline_trust),
+            self.config.baseline_closeness,
         )
 
     def _decay_social_memory(self, agents: list[object], hours: float) -> None:
@@ -321,21 +308,20 @@ class OuterMindDynamics:
     def _delta(
         self,
         agents: list[object],
-        before_relationships: dict[tuple[int, int], tuple[float, float]],
+        before_relationships: dict[tuple[int, int], float],
         before_states: dict[int, tuple[float, float, float, float, float]],
     ) -> OuterMindDelta:
-        relationship_changes: dict[tuple[int, int], tuple[float, float]] = {}
+        relationship_changes: dict[tuple[int, int], float] = {}
         keys = set(before_relationships) | set(self._relationships)
         for key in keys:
-            before_closeness, before_trust = before_relationships.get(
+            before_closeness = before_relationships.get(
                 key,
-                (self.config.baseline_closeness, self.config.baseline_trust),
+                self.config.baseline_closeness,
             )
-            after_closeness, after_trust = self.relationship(*key)
+            after_closeness = self.relationship(*key)
             dc = after_closeness - before_closeness
-            dt = after_trust - before_trust
-            if dc != 0.0 or dt != 0.0:
-                relationship_changes[key] = (dc, dt)
+            if dc != 0.0:
+                relationship_changes[key] = dc
 
         contribution_changes: dict[int, float] = {}
         return_changes: dict[int, float] = {}

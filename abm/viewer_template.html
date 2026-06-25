@@ -190,17 +190,44 @@
       font-size: 10px;
       text-shadow: none;
     }
-    .counts {
-      display: grid;
-      gap: 4px;
-      margin-top: 6px;
+    .activity-bar {
+      display: block;
+      width: 100%;
+      height: 54px;
+      margin-top: 2px;
+      background: transparent;
     }
-    .count-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid rgba(74, 43, 20, 0.14);
-      padding-bottom: 3px;
+    .traits-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 2px;
+    }
+    .trait-chart-wrap {
+      position: relative;
+      height: 130px;
+    }
+    .trait-chart-wrap canvas {
+      width: 100%;
+      height: 100%;
+      background: transparent;
+    }
+    .trait-label {
+      position: absolute;
+      bottom: 2px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 8px;
+      color: rgba(74, 43, 20, 0.50);
+      font-family: "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive;
+      pointer-events: none;
+    }
+    .social-graph {
+      display: block;
+      width: 100%;
+      height: 160px;
+      margin-top: 2px;
+      background: transparent;
     }
     .metrics-tabs {
       display: grid;
@@ -268,32 +295,6 @@
       display: block;
       background: transparent;
     }
-    .network-summary {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-      margin: 10px 0;
-      font-size: 10px;
-    }
-    .network-summary div {
-      border-bottom: 1px solid rgba(74, 43, 20, 0.14);
-      padding-bottom: 5px;
-    }
-    .network-wrap {
-      position: relative;
-      height: 360px;
-      border: 0;
-      border-top: 1px solid rgba(74, 43, 20, 0.12);
-      border-bottom: 1px solid rgba(74, 43, 20, 0.12);
-      border-radius: 0;
-      background: transparent;
-      overflow: hidden;
-    }
-    #socialNetworkCanvas {
-      width: 100%;
-      height: 100%;
-      background: transparent;
-    }
     .layer-controls {
       display: grid;
       grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -357,7 +358,7 @@
     .hint {
       color: rgba(74, 43, 20, 0.68);
       font-size: 10px;
-      margin-top: 16px;
+      margin-top: 4px;
       text-shadow: none;
       line-height: 1.55;
     }
@@ -444,15 +445,35 @@
       <div class="metrics-tabs" id="metricsTabs"></div>
       <div class="metrics-stage" id="metricsStage"></div>
       <canvas class="section-divider" aria-hidden="true"></canvas>
-      <h2>Social Network</h2>
-      <div class="network-summary" id="networkSummary"></div>
-      <div class="network-wrap">
-        <canvas id="socialNetworkCanvas"></canvas>
-      </div>
-      <p class="hint">Only agents with active social ties are shown. Click a node to select the same agent on the map.</p>
+      <h2>Current Pursuits</h2>
+      <canvas id="activityBarCanvas" class="activity-bar"></canvas>
       <canvas class="section-divider" aria-hidden="true"></canvas>
-      <h2>State Counts</h2>
-      <div class="counts" id="stateCounts"></div>
+      <h2>Inclinations</h2>
+      <div class="traits-split">
+        <div class="trait-chart-wrap">
+          <canvas id="interestsRadar"></canvas>
+          <div class="trait-label">Interests</div>
+        </div>
+        <div class="trait-chart-wrap">
+          <canvas id="skillsRadar"></canvas>
+          <div class="trait-label">Skills</div>
+        </div>
+      </div>
+      <canvas class="section-divider" aria-hidden="true"></canvas>
+      <h2>Disposition</h2>
+      <div class="traits-split">
+        <div class="trait-chart-wrap">
+          <canvas id="personalityRadar"></canvas>
+          <div class="trait-label">Personality</div>
+        </div>
+        <div class="trait-chart-wrap">
+          <canvas id="emotionRadar"></canvas>
+          <div class="trait-label">Emotion</div>
+        </div>
+      </div>
+      <canvas class="section-divider" aria-hidden="true"></canvas>
+      <h2>Social Graph</h2>
+      <canvas id="socialGraphCanvas" class="social-graph"></canvas>
     </aside>
   </div>
   <script>
@@ -480,6 +501,7 @@
       { id: "southeast", label: "Southeast", bounds: { left: 0.680, top: 0.634, right: 0.980, bottom: 0.934 } },
     ];
     const SUBMAP_TRANSITION_MS = 1800;
+    const ACTIVE_SUBMAP_STORAGE_KEY = "siamesebh.activeSubmapId";
     const MAP_LAYER_TRANSITION = {
       buildingLayer: { outStart: 0.02, inStart: 0.52 },
       roadLayer: { outStart: 0.08, inStart: 0.46 },
@@ -499,8 +521,6 @@
     );
     const canvas = document.getElementById("mapCanvas");
     const ctx = canvas.getContext("2d");
-    const socialCanvas = document.getElementById("socialNetworkCanvas");
-    const socialCtx = socialCanvas.getContext("2d");
     const tooltip = document.getElementById("tooltip");
     const appRoot = document.querySelector(".app");
     const leftPanel = document.querySelector(".left-panel");
@@ -510,16 +530,35 @@
     let summary = null;
     let sim = null;
     let baseCanvas = null;
+    const activityBarCanvas = document.getElementById("activityBarCanvas");
+    const interestsRadar = document.getElementById("interestsRadar");
+    const skillsRadar = document.getElementById("skillsRadar");
+    const ACTIVITY_ORDER = ["sleep", "rest", "eat", "study", "exercise", "social", "service"];
+    const ACTIVITY_LABELS = ["Sleep", "Rest", "Eat", "Study", "Exer.", "Social", "Svc."];
+    const TRAIT_KEYS = ["study", "exercise", "music", "game"];
+    const TRAIT_LABELS = ["Study", "Exer.", "Music", "Game"];
+    const personalityRadar = document.getElementById("personalityRadar");
+    const emotionRadar = document.getElementById("emotionRadar");
+    const PERSONALITY_KEYS = ["openness", "conscientiousness", "extraversion", "agreeableness", "neuroticism"];
+    const PERSONALITY_LABELS = ["Open.", "Consc.", "Extra.", "Agree.", "Neuro."];
+    const EMOTION_KEYS = ["pleasure", "arousal", "dominance"];
+    const EMOTION_LABELS = ["Pleas.", "Arous.", "Domin."];
+    const socialGraphCanvas = document.getElementById("socialGraphCanvas");
+    var socialGraphLayout = null;
+    var socialGraphPrevLayout = null;
+    var socialGraphAnimStart = 0;
+    var socialGraphHash = '';
+    var SOCIAL_GRAPH_ANIM_MS = 800;
+    var socialGraphDrawn = '';
     let agentNameLayer = null;
     let mapLayers = null;
-    let activeSubmapId = "overview";
+    let activeSubmapId = restoreActiveSubmapId();
     let submapTransition = null;
     let paperTextureImage = null;
     let paperTextureReady = false;
     let continuousPaperBase = null;
     let selectedId = null;
     let hoveredAgent = null;
-    let hoveredNetworkNodeId = null;
     const nameFadeAlphas = new Map(); // agent id -> current alpha (0..1)
     const agentNameSprites = new Map(); // display name -> prerendered text bitmap
     let animationStarted = false;
@@ -530,7 +569,6 @@
     const agentAnimations = new Map();
     const agentPathCache = new Map();
     const agentPathKeyCache = new Map();
-    const socialNodePositions = new Map();
     let stateRequestEpoch = 0;
     let controlInFlight = false;
     const RESET_ANIMATION_SPEED_MULTIPLIER = 3.0;
@@ -544,6 +582,8 @@
       { key: "wellbeing", label: "wellbeing" },
     ];
     let metricsHistory = [];
+    // Compressed hourly averages for daily-mode charting — permanent, tiny (~8760/year)
+    let hourlyArchive = [];
     let activeMetricKey = "energy";
     let metricsViewMode = "hourly";
     const METRICS_BUCKET_MODES = {
@@ -578,7 +618,7 @@
       const safeMessage = escapeHtml(message);
       document.getElementById("layerControls").innerHTML = `<p class="hint">${safeMessage}</p>`;
       document.getElementById("simFacts").innerHTML = `<dt>error</dt><dd>${safeMessage}</dd>`;
-      document.getElementById("stateCounts").innerHTML = `<p class="hint">${safeMessage}</p>`;
+      document.getElementById("activityBarCanvas").style.display = "none";
       const rect = canvas.getBoundingClientRect();
       const ratio = window.devicePixelRatio || 1;
       canvas.width = Math.max(1, Math.floor(rect.width * ratio));
@@ -658,7 +698,10 @@
     function aggregateMetricsHistory(modeKey, currentElapsed) {
       const mode = METRICS_BUCKET_MODES[modeKey] || METRICS_BUCKET_MODES.hourly;
       const buckets = new Map();
-      for (const sample of metricsHistory) {
+      // Daily mode: aggregate from compressed hourlyArchive (permanent, tiny)
+      // Hourly mode: aggregate from raw metricsHistory (windowed, ~13 hours)
+      const source = modeKey === "daily" ? hourlyArchive : metricsHistory;
+      for (const sample of source) {
         const elapsed = Number(sample.elapsed_seconds);
         if (!Number.isFinite(elapsed)) continue;
         const bucketIndex = Math.floor(elapsed / mode.bucketSeconds);
@@ -675,10 +718,12 @@
           buckets.set(bucketIndex, bucket);
         }
         const bucket = buckets.get(bucketIndex);
-        bucket.count += 1;
+        // hourlyArchive entries represent one hour each; weight by sample count if available
+        var weight = (modeKey === "daily" && typeof sample.count === "number") ? sample.count : 1;
+        bucket.count += weight;
         bucket.step = sample.step;
         for (const def of AVERAGE_METRIC_DEFS) {
-          bucket[def.key] += clamp01(Number(sample[def.key]) || 0);
+          bucket[def.key] += (clamp01(Number(sample[def.key]) || 0)) * weight;
         }
       }
       var aggregated = Array.from(buckets.values()).sort(function(a, b) {
@@ -712,6 +757,9 @@
       // Restore metrics history from server checkpoint
       metricsHistory = (metricsSnapshot.metrics_history && metricsSnapshot.metrics_history.length > 0)
         ? normalizeMetricsHistory(metricsSnapshot.metrics_history, sim.seconds_per_step)
+        : [];
+      hourlyArchive = (metricsSnapshot.hourly_archive && metricsSnapshot.hourly_archive.length > 0)
+        ? normalizeMetricsHistory(metricsSnapshot.hourly_archive, sim.seconds_per_step)
         : [];
       indexRegions();
       updateAgentPathCache(sim);
@@ -772,6 +820,7 @@
           agentPathCache.clear();
           agentPathKeyCache.clear();
           metricsHistory = [];
+          hourlyArchive = [];
           metricsViewMode = "hourly";
         }
         simReceivedAt = performance.now();
@@ -827,6 +876,23 @@
         if (!button) return;
         selectSubmap(button.dataset.submapId);
       });
+    }
+
+    function restoreActiveSubmapId() {
+      try {
+        const storedId = sessionStorage.getItem(ACTIVE_SUBMAP_STORAGE_KEY);
+        return SUBMAP_DEFS.some((submap) => submap.id === storedId) ? storedId : "overview";
+      } catch {
+        return "overview";
+      }
+    }
+
+    function storeActiveSubmapId(submapId) {
+      try {
+        sessionStorage.setItem(ACTIVE_SUBMAP_STORAGE_KEY, submapId);
+      } catch {
+        // Storage can be unavailable in restricted browser contexts.
+      }
     }
 
     function renderLayerControls() {
@@ -888,6 +954,7 @@
       if (submapId === activeSubmapId && !submapTransition) return;
       const fromId = activeSubmapId;
       activeSubmapId = submapId;
+      storeActiveSubmapId(submapId);
       submapTransition = {
         fromId,
         toId: submapId,
@@ -1470,10 +1537,6 @@
       canvas.width = Math.max(1, Math.floor(rect.width * dpr));
       canvas.height = Math.max(1, Math.floor(rect.height * dpr));
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const networkRect = elementLayoutSize(socialCanvas);
-      socialCanvas.width = Math.max(1, Math.floor(networkRect.width * dpr));
-      socialCanvas.height = Math.max(1, Math.floor(networkRect.height * dpr));
-      socialCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
       if (!resize.didFit && summary) {
         const worldW = summary.size.cols * CELL;
         const worldH = summary.size.rows * CELL;
@@ -1486,7 +1549,6 @@
       updatePanelAnchors();
       drawTitleUnderline();
       draw();
-      drawSocialNetwork();
       renderAverageMetrics();
 
     }
@@ -1565,6 +1627,7 @@
 
     function animationLoop(now) {
       draw(now);
+      drawSocialGraph(now);
       requestAnimationFrame(animationLoop);
     }
 
@@ -1581,15 +1644,12 @@
       document.getElementById("simFacts").innerHTML = simRows.map(row =>
         `<div class="sim-row"><span class="sim-key">${row[0]}</span><span class="sim-val">${row[1]}</span><span class="sim-key">${row[2]}</span><span class="sim-val">${row[3]}</span></div>`
       ).join("");
-      document.getElementById("stateCounts").innerHTML = Object.entries(sim.state_counts)
-        .map(([key, value]) => `<div class="count-row"><span>${key}</span><strong>${value}</strong></div>`)
-        .join("");
+      drawActivityBar();
+      drawTraitsRadars();
+      drawDispositionRadars();
       const selected = selectedId ? findAgent(selectedId) : null;
       updateSubmapControls();
       renderAverageMetrics();
-
-      renderNetworkSummary();
-      drawSocialNetwork();
     }
 
     function setFacts(id, rows) {
@@ -1602,7 +1662,7 @@
       if (elapsed === null) return;
       if (last && (Number(simData.step) <= Number(last.step) || elapsed <= Number(last.elapsed_seconds))) return;
       const m = simData.average_metrics || {};
-      metricsHistory.push({
+      var sample = {
         step: simData.step,
         elapsed_seconds: elapsed,
         t: elapsed * 1000,
@@ -1613,7 +1673,47 @@
         wellbeing: clamp01(Number(m.wellbeing) || 0),
         intrinsic_satisfaction: clamp01(Number(m.intrinsic_satisfaction) || 0),
         extrinsic_satisfaction: clamp01(Number(m.extrinsic_satisfaction) || 0),
-      });
+      };
+      metricsHistory.push(sample);
+
+      // --- Compress completed hours into hourlyArchive for daily-mode charting ---
+      var secondsPerStep = Math.max(1, simData.seconds_per_step || 1);
+      var currentHour = Math.floor(elapsed / 3600);
+      var lastHour = last ? Math.floor(Number(last.elapsed_seconds) / 3600) : currentHour;
+
+      if (last && currentHour > lastHour) {
+        // One or more hours just completed. Compress each completed hour.
+        for (var h = lastHour; h < currentHour; h++) {
+          var hourStart = h * 3600;
+          var hourEnd = hourStart + 3600;
+          var hourSamples = [];
+          // Gather samples within [hourStart, hourEnd) from the raw history
+          for (var i = 0; i < metricsHistory.length; i++) {
+            var s = metricsHistory[i];
+            var e = Number(s.elapsed_seconds);
+            if (e >= hourStart && e < hourEnd) hourSamples.push(s);
+          }
+          if (hourSamples.length === 0) continue;
+          // Compute hourly average and push to archive
+          var avg = { bucketIndex: h, elapsed_seconds: hourStart, t: hourStart * 1000, count: hourSamples.length };
+          for (var d = 0; d < AVERAGE_METRIC_DEFS.length; d++) {
+            var key = AVERAGE_METRIC_DEFS[d].key;
+            var sum = 0;
+            for (var k = 0; k < hourSamples.length; k++) sum += Number(hourSamples[k][key]) || 0;
+            avg[key] = sum / hourSamples.length;
+          }
+          // Avoid duplicate entries for the same hour
+          var dup = hourlyArchive.length > 0 && hourlyArchive[hourlyArchive.length - 1].bucketIndex === h;
+          if (!dup) hourlyArchive.push(avg);
+        }
+      }
+
+      // --- Trim raw history: keep only the last 13 hours of samples ---
+      var maxKeepSec = (METRICS_BUCKET_MODES.hourly.limit + 1) * METRICS_BUCKET_MODES.hourly.bucketSeconds;
+      var cutoff = elapsed - maxKeepSec;
+      while (metricsHistory.length > 0 && Number(metricsHistory[0].elapsed_seconds) < cutoff) {
+        metricsHistory.shift();
+      }
     }
 
     function renderAverageMetrics() {
@@ -1662,7 +1762,461 @@
       var activeDef = AVERAGE_METRIC_DEFS.find(function(d) { return d.key === activeMetricKey; })
         || AVERAGE_METRIC_DEFS[0];
       var canvas = stageEl.querySelector('canvas[data-metric="' + activeDef.key + '"]');
-      if (canvas) drawMetricChart(canvas, activeDef.key, !!activeDef.warning);
+      if (canvas) drawMetricChart(canvas, activeDef.key);
+    }
+
+    function drawActivityBar() {
+      var canvas = activityBarCanvas;
+      if (!canvas || !sim) return;
+      var rect = elementLayoutSize(canvas);
+      var cssW = rect.width;
+      var cssH = rect.height;
+      if (!cssW || !cssH) return;
+
+      var dpr = window.devicePixelRatio || 1;
+      var supersample = 1.5;
+      var bufW = Math.max(1, Math.round(cssW * dpr * supersample));
+      var bufH = Math.max(1, Math.round(cssH * dpr * supersample));
+      if (canvas.width !== bufW || canvas.height !== bufH) {
+        canvas.width = bufW;
+        canvas.height = bufH;
+      }
+      var ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.scale(dpr * supersample, dpr * supersample);
+
+      var W = cssW;
+      var H = cssH;
+
+      var acts = sim.activity_counts || {};
+      var n = ACTIVITY_ORDER.length;
+      var maxCount = 1;
+      for (var i = 0; i < n; i++) {
+        maxCount = Math.max(maxCount, acts[ACTIVITY_ORDER[i]] || 0);
+      }
+
+      var segW = W / n;
+      var gap = 2;
+      var barY = 8;
+      var barH = 24;
+      var baseR = 74, baseG = 43, baseB = 20;
+
+      for (var i = 0; i < n; i++) {
+        var count = acts[ACTIVITY_ORDER[i]] || 0;
+        var intensity = count / maxCount;
+        var alpha = 0.07 + intensity * 0.70;
+        var x = i * segW + gap / 2;
+        var w = segW - gap;
+
+        // Fill
+        ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + alpha.toFixed(2) + ")";
+        ctx.fillRect(x, barY, w, barH);
+
+        // Border
+        ctx.strokeStyle = "rgba(74, 43, 20, 0.26)";
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(x, barY, w, barH);
+
+        // Count number
+        ctx.fillStyle = intensity > 0.45 ? "#f0ede6" : "#3b2412";
+        ctx.font = '9px "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive';
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(count, x + w / 2, barY + barH / 2);
+
+        // Label below
+        ctx.fillStyle = "rgba(74, 43, 20, 0.58)";
+        ctx.font = '7px "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive';
+        ctx.fillText(ACTIVITY_LABELS[i], x + w / 2, barY + barH + 13);
+      }
+
+      ctx.restore();
+    }
+
+    function drawTraitsRadars() {
+      var traits = sim.average_traits;
+      if (!traits) return;
+      drawOneRadar(interestsRadar, traits.interests, TRAIT_KEYS, TRAIT_LABELS);
+      drawOneRadar(skillsRadar, traits.skills, TRAIT_KEYS, TRAIT_LABELS);
+    }
+
+    function drawDispositionRadars() {
+      drawOneRadar(personalityRadar, sim.average_personality, PERSONALITY_KEYS, PERSONALITY_LABELS);
+      drawOneRadar(emotionRadar, sim.average_emotion, EMOTION_KEYS, EMOTION_LABELS);
+    }
+
+    function drawOneRadar(canvas, data, keys, labels) {
+      if (!canvas || !data) return;
+
+      // Skip redraw if data unchanged
+      var dataHash = keys.map(function(k) { return data[k].toFixed(3); }).join(',');
+      var cacheKey = canvas.id + '|' + dataHash;
+      if (canvas._radarHash === cacheKey) return;
+      canvas._radarHash = cacheKey;
+
+      var rect = elementLayoutSize(canvas);
+      var cssW = rect.width;
+      var cssH = rect.height;
+      if (!cssW || !cssH) return;
+
+      var dpr = window.devicePixelRatio || 1;
+      var supersample = 1.5;
+      var bufW = Math.max(1, Math.round(cssW * dpr * supersample));
+      var bufH = Math.max(1, Math.round(cssH * dpr * supersample));
+      if (canvas.width !== bufW || canvas.height !== bufH) {
+        canvas.width = bufW;
+        canvas.height = bufH;
+      }
+      var ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.scale(dpr * supersample, dpr * supersample);
+
+      var cx = cssW / 2;
+      var cy = cssH / 2 - 8;
+      var R = Math.min(cssW, cssH) * 0.32;
+      var n = keys.length;
+
+      // Grid rings
+      ctx.strokeStyle = "rgba(74, 43, 20, 0.22)";
+      ctx.lineWidth = 0.5;
+      ctx.setLineDash([2, 4]);
+      [0.25, 0.5, 0.75, 1.0].forEach(function(level) {
+        ctx.beginPath();
+        for (var i = 0; i < n; i++) {
+          var angle = (2 * Math.PI * i) / n - Math.PI / 2;
+          var rx = cx + Math.cos(angle) * R * level;
+          var ry = cy + Math.sin(angle) * R * level;
+          if (i === 0) ctx.moveTo(rx, ry);
+          else ctx.lineTo(rx, ry);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      });
+      ctx.setLineDash([]);
+
+      // Axes
+      ctx.strokeStyle = "rgba(74, 43, 20, 0.22)";
+      ctx.lineWidth = 0.5;
+      for (var i = 0; i < n; i++) {
+        var angle = (2 * Math.PI * i) / n - Math.PI / 2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(angle) * R, cy + Math.sin(angle) * R);
+        ctx.stroke();
+      }
+
+      // Data polygon
+      ctx.beginPath();
+      for (var i = 0; i < n; i++) {
+        var val = clamp01(Number(data[keys[i]]) || 0);
+        var angle = (2 * Math.PI * i) / n - Math.PI / 2;
+        var rx = cx + Math.cos(angle) * R * val;
+        var ry = cy + Math.sin(angle) * R * val;
+        if (i === 0) ctx.moveTo(rx, ry);
+        else ctx.lineTo(rx, ry);
+      }
+      ctx.closePath();
+      ctx.fillStyle = "rgba(74, 43, 20, 0.10)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(74, 43, 20, 0.52)";
+      ctx.lineWidth = 0.9;
+      ctx.lineJoin = "round";
+      ctx.stroke();
+
+      // Data dots
+      for (var i = 0; i < n; i++) {
+        var val = clamp01(Number(data[keys[i]]) || 0);
+        var angle = (2 * Math.PI * i) / n - Math.PI / 2;
+        var rx = cx + Math.cos(angle) * R * val;
+        var ry = cy + Math.sin(angle) * R * val;
+        ctx.beginPath();
+        ctx.arc(rx, ry, 2.0, 0, Math.PI * 2);
+        ctx.fillStyle = "#4a2b14";
+        ctx.fill();
+      }
+
+      // Axis labels
+      ctx.fillStyle = "rgba(74, 43, 20, 0.55)";
+      ctx.font = '7px "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive';
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      var labelDist = R + 11;
+      for (var i = 0; i < n; i++) {
+        var angle = (2 * Math.PI * i) / n - Math.PI / 2;
+        var lx = cx + Math.cos(angle) * labelDist;
+        var ly = cy + Math.sin(angle) * labelDist;
+        ctx.fillText(labels[i], lx, ly);
+      }
+
+      ctx.restore();
+    }
+
+    function drawSocialGraph(now = performance.now()) {
+      var canvas = socialGraphCanvas;
+      if (!canvas || !sim) return;
+
+      var rect = elementLayoutSize(canvas);
+      var cssW = rect.width;
+      var cssH = rect.height;
+      if (!cssW || !cssH) return;
+
+      var graph = sim.social_graph;
+      var nodes = graph && graph.nodes ? graph.nodes : [];
+      var ties = graph && graph.ties ? graph.ties : [];
+      var hash = nodes.map(function(n) { return n.id; }).sort().join(',')
+        + '|' + ties.map(function(t) { return t.source + '-' + t.target + ':' + t.tier + ':' + (t.mutual ? 'solid' : 'dashed'); }).sort().join(',')
+        + '|' + cssW + 'x' + cssH;
+
+      var dpr = window.devicePixelRatio || 1;
+      var supersample = 1.5;
+      var bufW = Math.max(1, Math.round(cssW * dpr * supersample));
+      var bufH = Math.max(1, Math.round(cssH * dpr * supersample));
+      var resized = canvas.width !== bufW || canvas.height !== bufH;
+
+      var cx = cssW / 2;
+      var cy = cssH / 2;
+      var rx = cssW / 2 - 12;
+      var ry = cssH / 2 - 9;
+
+      if (socialGraphHash !== hash) {
+        socialGraphPrevLayout = socialGraphLayout;
+        socialGraphLayout = nodes.length
+          ? computeGraphLayout(nodes, ties, cx, cy, rx, ry, socialGraphPrevLayout)
+          : null;
+        socialGraphAnimStart = now;
+        socialGraphHash = hash;
+        socialGraphDrawn = '';
+      }
+
+      var animating = Boolean(
+        nodes.length
+        && socialGraphLayout
+        && now - socialGraphAnimStart < SOCIAL_GRAPH_ANIM_MS
+      );
+      if (!animating && !resized && socialGraphDrawn === hash) return;
+
+      if (canvas.width !== bufW || canvas.height !== bufH) {
+        canvas.width = bufW;
+        canvas.height = bufH;
+      }
+      var ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.scale(dpr * supersample, dpr * supersample);
+
+      // Ellipse geometry
+      // Ellipse outline — always visible
+      ctx.strokeStyle = "rgba(74, 43, 20, 0.13)";
+      ctx.lineWidth = 0.5;
+      ctx.setLineDash([3, 6]);
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      if (!nodes.length) {
+        socialGraphLayout = null;
+        socialGraphPrevLayout = null;
+        socialGraphDrawn = hash;
+        ctx.restore();
+        return;
+      }
+
+      // Interpolate positions during animation
+      var rawT = socialGraphAnimStart > 0 ? (now - socialGraphAnimStart) / SOCIAL_GRAPH_ANIM_MS : 1;
+      var t = Math.min(1, rawT);
+      t = 1 - Math.pow(1 - t, 3); // ease-out cubic
+      var pos = {};
+      var target = socialGraphLayout || {};
+      var prev = socialGraphPrevLayout || {};
+      for (var id in target) {
+        var tp = target[id];
+        if (prev[id]) {
+          pos[id] = { x: prev[id].x + (tp.x - prev[id].x) * t, y: prev[id].y + (tp.y - prev[id].y) * t };
+        } else {
+          // New node: emerge near the average position of its existing neighbors.
+          var neighborX = 0;
+          var neighborY = 0;
+          var neighborCount = 0;
+          for (var tieIndex = 0; tieIndex < ties.length; tieIndex++) {
+            var tie = ties[tieIndex];
+            var neighborId = null;
+            if (String(tie.source) === String(id)) neighborId = tie.target;
+            else if (String(tie.target) === String(id)) neighborId = tie.source;
+            if (neighborId !== null && prev[neighborId]) {
+              neighborX += prev[neighborId].x;
+              neighborY += prev[neighborId].y;
+              neighborCount++;
+            }
+          }
+          var seed = hashString("social-node|" + id);
+          var angle = ((seed % 360) * Math.PI) / 180;
+          var jitter = 4;
+          var startX = (neighborCount ? neighborX / neighborCount : cx) + Math.cos(angle) * jitter;
+          var startY = (neighborCount ? neighborY / neighborCount : cy) + Math.sin(angle) * jitter;
+          pos[id] = { x: startX + (tp.x - startX) * t, y: startY + (tp.y - startY) * t };
+        }
+      }
+
+      // Draw ties
+      ctx.lineCap = 'round';
+      for (var i = 0; i < ties.length; i++) {
+        var t = ties[i];
+        var a = pos[t.source];
+        var b = pos[t.target];
+        if (!a || !b) continue;
+        ctx.strokeStyle = "rgba(74, 43, 20, 0.24)";
+        ctx.lineWidth = 0.7;
+        ctx.setLineDash(t.mutual ? [] : [3, 3]);
+        if (t.tier === "intimate") {
+          var dx = b.x - a.x;
+          var dy = b.y - a.y;
+          var distance = Math.sqrt(dx * dx + dy * dy) || 1;
+          var offsetX = (-dy / distance) * 1.2;
+          var offsetY = (dx / distance) * 1.2;
+          for (var side = -1; side <= 1; side += 2) {
+            ctx.beginPath();
+            ctx.moveTo(a.x + offsetX * side, a.y + offsetY * side);
+            ctx.lineTo(b.x + offsetX * side, b.y + offsetY * side);
+            ctx.stroke();
+          }
+        } else {
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+      }
+      ctx.setLineDash([]);
+
+      // Draw nodes — match map agent shapes and sizes
+      var size = 1.5;
+      ctx.fillStyle = "rgba(74, 43, 20, 0.55)";
+      for (var i = 0; i < nodes.length; i++) {
+        var n = nodes[i];
+        var p = pos[n.id];
+        if (!p) continue;
+        if (n.gender === "female") {
+          var ds = size * Math.SQRT2;
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y - ds);
+          ctx.lineTo(p.x + ds, p.y);
+          ctx.lineTo(p.x, p.y + ds);
+          ctx.lineTo(p.x - ds, p.y);
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          ctx.fillRect(p.x - size, p.y - size, size * 2, size * 2);
+        }
+      }
+
+      if (!animating) {
+        socialGraphPrevLayout = null;
+        socialGraphDrawn = hash;
+      }
+      ctx.restore();
+    }
+
+    function computeGraphLayout(nodes, ties, cx, cy, rx, ry, previousPositions = null) {
+      var positions = {};
+      var previous = previousPositions || {};
+      // Preserve existing nodes. Seed new nodes near their existing neighbors.
+      for (var i = 0; i < nodes.length; i++) {
+        var nodeId = nodes[i].id;
+        var oldPosition = previous[nodeId];
+        if (oldPosition) {
+          positions[nodeId] = {
+            x: oldPosition.x,
+            y: oldPosition.y,
+            vx: 0,
+            vy: 0
+          };
+          continue;
+        }
+        var neighborX = 0;
+        var neighborY = 0;
+        var neighborCount = 0;
+        for (var tieIndex = 0; tieIndex < ties.length; tieIndex++) {
+          var tie = ties[tieIndex];
+          var neighborId = null;
+          if (tie.source === nodeId) neighborId = tie.target;
+          else if (tie.target === nodeId) neighborId = tie.source;
+          if (neighborId !== null && previous[neighborId]) {
+            neighborX += previous[neighborId].x;
+            neighborY += previous[neighborId].y;
+            neighborCount++;
+          }
+        }
+        var seed = hashString("social-layout|" + nodeId);
+        var angle = ((seed % 360) * Math.PI) / 180;
+        var baseX = neighborCount ? neighborX / neighborCount : cx;
+        var baseY = neighborCount ? neighborY / neighborCount : cy;
+        var radius = neighborCount ? 4 : Math.min(rx, ry) * 0.25;
+        positions[nodes[i].id] = {
+          x: baseX + Math.cos(angle) * radius,
+          y: baseY + Math.sin(angle) * radius,
+          vx: 0, vy: 0
+        };
+      }
+
+      var kRep = 300;
+      var damping = 0.82;
+      var maxSpeed = 3.5;
+      var iters = Math.min(100, 40 + nodes.length);
+
+      for (var iter = 0; iter < iters; iter++) {
+        for (var i = 0; i < nodes.length; i++) {
+          var pi = positions[nodes[i].id];
+          for (var j = i + 1; j < nodes.length; j++) {
+            var pj = positions[nodes[j].id];
+            var dx = pj.x - pi.x;
+            var dy = pj.y - pi.y;
+            var dist = Math.sqrt(dx * dx + dy * dy) || 0.5;
+            var force = kRep / (dist * dist);
+            var fx = (dx / dist) * force;
+            var fy = (dy / dist) * force;
+            pi.vx -= fx; pi.vy -= fy;
+            pj.vx += fx; pj.vy += fy;
+          }
+        }
+        for (var i = 0; i < ties.length; i++) {
+          var a = positions[ties[i].source];
+          var b = positions[ties[i].target];
+          if (!a || !b) continue;
+          var dx = b.x - a.x;
+          var dy = b.y - a.y;
+          var dist = Math.sqrt(dx * dx + dy * dy) || 0.5;
+          var kAtt = ties[i].tier === "intimate"
+            ? (ties[i].mutual ? 0.055 : 0.040)
+            : (ties[i].mutual ? 0.030 : 0.020);
+          var force = kAtt * dist;
+          var fx = (dx / dist) * force;
+          var fy = (dy / dist) * force;
+          a.vx += fx; a.vy += fy;
+          b.vx -= fx; b.vy -= fy;
+        }
+        for (var id in positions) {
+          var p = positions[id];
+          p.vx += (cx - p.x) * 0.0005;
+          p.vy += (cy - p.y) * 0.0005;
+          var speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+          if (speed > maxSpeed) { p.vx = (p.vx / speed) * maxSpeed; p.vy = (p.vy / speed) * maxSpeed; }
+          p.vx *= damping; p.vy *= damping;
+          p.x += p.vx; p.y += p.vy;
+          // Soft ellipse-boundary repulsion: grows exponentially past 0.65
+          var dxe = (p.x - cx) / rx;
+          var dye = (p.y - cy) / ry;
+          var edist = Math.sqrt(dxe * dxe + dye * dye);
+          if (edist > 0.65) {
+            var wallForce = Math.exp((edist - 0.65) * 8) * 0.25;
+            p.vx -= (dxe / edist) * wallForce;
+            p.vy -= (dye / edist) * wallForce;
+          }
+        }
+      }
+      return positions;
     }
 
     function selectMetric(key) {
@@ -1700,7 +2254,7 @@
       return aggregateMetricsHistory(metricsViewMode, currentElapsed);
     }
 
-    function drawMetricChart(canvas, metricKey, isWarning) {
+    function drawMetricChart(canvas, metricKey) {
       var wrap = canvas.parentElement;
       var cssW = wrap.offsetWidth;
       var cssH = wrap.offsetHeight;
@@ -1788,14 +2342,14 @@
         var lastX = colCenterX(colsWithData[colsWithData.length - 1]);
         ctx.lineTo(lastX, cssH - pad.bottom);
         ctx.closePath();
-        ctx.fillStyle = isWarning ? "rgba(122, 86, 48, 0.08)" : "rgba(74, 43, 20, 0.07)";
+        ctx.fillStyle = "rgba(122, 86, 48, 0.07)";
         ctx.fill();
       }
 
       // ---- Connecting line ----
       if (colsWithData.length >= 1) {
         ctx.beginPath();
-        ctx.strokeStyle = isWarning ? "#7a5630" : "#6b2f1a";
+        ctx.strokeStyle = "#5c3a28";
         ctx.lineWidth = 1.2;
         ctx.lineJoin = "round";
         ctx.lineCap = "round";
@@ -1813,7 +2367,7 @@
       }
 
       // ---- Data dots ----
-      var dotColor = isWarning ? "rgba(122, 86, 48, 0.72)" : "rgba(74, 43, 20, 0.72)";
+      var dotColor = "rgba(122, 86, 48, 0.72)";
       ctx.fillStyle = dotColor;
       for (var i = 0; i < colsWithData.length; i++) {
         var col = colsWithData[i];
@@ -1836,193 +2390,6 @@
       }
 
       ctx.restore();
-    }
-
-    function renderNetworkSummary() {
-      if (!sim) return;
-      const network = sim.social_network || { nodes: [], edges: [], tier_counts: {} };
-      const tiers = network.tier_counts || {};
-      document.getElementById("networkSummary").innerHTML = [
-        ["Nodes", (network.nodes || []).length],
-        ["Edges", (network.edges || []).length],
-        ["Intimate", tiers.intimate || 0],
-        ["Friends", tiers.friend || 0],
-      ].map(([key, value]) => `<div><span>${key}</span><br><strong>${value}</strong></div>`).join("");
-    }
-
-    function drawSocialNetwork() {
-      if (!socialCanvas || !socialCtx || !sim) return;
-      const rect = elementLayoutSize(socialCanvas);
-      socialCtx.clearRect(0, 0, rect.width, rect.height);
-      const network = sim.social_network || { nodes: [], edges: [] };
-      const nodes = network.nodes || [];
-      const edges = network.edges || [];
-      if (!nodes.length || !edges.length) {
-        socialNodePositions.clear();
-        socialCtx.fillStyle = "#9ca3a8";
-        socialCtx.font = "13px system-ui, -apple-system, Segoe UI, sans-serif";
-        socialCtx.textAlign = "center";
-        socialCtx.textBaseline = "middle";
-        socialCtx.fillText("No active social ties yet", rect.width / 2, rect.height / 2);
-        return;
-      }
-
-      layoutSocialNodes(nodes, rect.width, rect.height);
-      socialCtx.save();
-      socialCtx.lineCap = "round";
-      for (const edge of edges) {
-        const source = socialNodePositions.get(String(edge.source));
-        const target = socialNodePositions.get(String(edge.target));
-        if (!source || !target) continue;
-        const intimacy = clamp01(Number(edge.intimacy || 0));
-        const edgeStyle = socialEdgeStyle(edge.tier, intimacy);
-        const isHighlighted = selectedId !== null && selectedId !== undefined
-          && (String(edge.source) === String(selectedId) || String(edge.target) === String(selectedId));
-        socialCtx.globalAlpha = isHighlighted ? Math.min(1, edgeStyle.alpha * 2.4) : edgeStyle.alpha;
-        socialCtx.strokeStyle = isHighlighted ? agentColors.selected : edgeStyle.color;
-        socialCtx.lineWidth = isHighlighted ? Math.max(1.1, edgeStyle.width * 1.35) : edgeStyle.width;
-        if (isHighlighted) {
-          socialCtx.shadowColor = "rgba(200, 180, 150, 0.28)";
-          socialCtx.shadowBlur = 7;
-        }
-        socialCtx.beginPath();
-        socialCtx.moveTo(source.x, source.y);
-        socialCtx.lineTo(target.x, target.y);
-        socialCtx.stroke();
-        socialCtx.shadowColor = "transparent";
-        socialCtx.shadowBlur = 0;
-      }
-      const connectedNodeIds = new Set();
-      if (selectedId !== null && selectedId !== undefined) {
-        for (const edge of edges) {
-          const src = String(edge.source);
-          const tgt = String(edge.target);
-          if (src === String(selectedId)) connectedNodeIds.add(tgt);
-          if (tgt === String(selectedId)) connectedNodeIds.add(src);
-        }
-      }
-
-      socialCtx.globalAlpha = 1;
-
-      for (const node of nodes) {
-        const pos = socialNodePositions.get(String(node.id));
-        if (!pos) continue;
-        const agent = findAgent(node.id);
-        const selected = String(node.id) === String(selectedId);
-        const connected = connectedNodeIds.has(String(node.id));
-        const hovered = String(node.id) === String(hoveredNetworkNodeId);
-        const radius = selected ? 5.8 : hovered ? 5.3 : connected ? 4.9 : 4.0;
-        if (selected || connected) {
-          const glowRadius = selected ? 11.5 : 9.5;
-          const gradient = socialCtx.createRadialGradient(pos.x, pos.y, radius, pos.x, pos.y, glowRadius);
-          gradient.addColorStop(0, selected ? "rgba(200, 180, 150, 0.28)" : "rgba(200, 180, 150, 0.18)");
-          gradient.addColorStop(1, "rgba(200, 180, 150, 0)");
-          socialCtx.beginPath();
-          socialCtx.globalAlpha = 1;
-          socialCtx.fillStyle = gradient;
-          socialCtx.arc(pos.x, pos.y, glowRadius, 0, Math.PI * 2);
-          socialCtx.fill();
-        }
-        socialCtx.beginPath();
-        socialCtx.fillStyle = selected ? agentColors.selected : "#c9a87c";
-        socialCtx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
-        socialCtx.fill();
-        if (agent && agentView(agent).phase === "MOVING") {
-          socialCtx.beginPath();
-          socialCtx.strokeStyle = "#2f7d5b";
-          socialCtx.lineWidth = 1.2;
-          socialCtx.arc(pos.x, pos.y, radius + 2.4, 0, Math.PI * 2);
-          socialCtx.stroke();
-        }
-      }
-      socialCtx.restore();
-    }
-
-    function socialEdgeStyle(tier, intimacy) {
-      if (tier === "intimate") {
-        return {
-          alpha: 0.30 + intimacy * 0.20,
-          width: 1.4 + intimacy * 2.2,
-          color: "#c9a87c",
-        };
-      }
-      if (tier === "friend") {
-        return {
-          alpha: 0.035 + intimacy * 0.075,
-          width: 0.35 + intimacy * 0.85,
-          color: "#6f7452",
-        };
-      }
-      if (tier === "acquaintance") {
-        return {
-          alpha: 0.018 + intimacy * 0.035,
-          width: 0.25 + intimacy * 0.45,
-          color: "#7f8465",
-        };
-      }
-      return {
-        alpha: 0.01,
-        width: 0.2,
-        color: "#969a82",
-      };
-    }
-
-    function layoutSocialNodes(nodes, width, height) {
-      const sorted = [...nodes].sort((a, b) => Number(a.id) - Number(b.id));
-      const cx = width / 2;
-      const cy = height / 2;
-      const radius = Math.max(24, Math.min(width, height) * 0.39);
-      socialNodePositions.clear();
-      sorted.forEach((node, index) => {
-        const angle = -Math.PI / 2 + (Math.PI * 2 * index) / Math.max(1, sorted.length);
-        const degree = Math.max(0, Number(node.degree || 0));
-        const inward = Math.min(22, degree * 2.5);
-        socialNodePositions.set(String(node.id), {
-          x: cx + Math.cos(angle) * (radius - inward),
-          y: cy + Math.sin(angle) * (radius - inward),
-        });
-      });
-    }
-
-    function nearestSocialNode(event) {
-      const point = eventToLayoutPoint(event, socialCanvas);
-      const x = point.x;
-      const y = point.y;
-      let bestId = null;
-      let bestDistance = Infinity;
-      for (const [id, pos] of socialNodePositions.entries()) {
-        const distance = Math.hypot(pos.x - x, pos.y - y);
-        if (distance < bestDistance) {
-          bestId = id;
-          bestDistance = distance;
-        }
-      }
-      return bestDistance <= 12 ? bestId : null;
-    }
-
-    function showNetworkTooltip(agentId, event) {
-      if (!agentId) {
-        tooltip.style.display = "none";
-        return;
-      }
-      const agent = findAgent(agentId);
-      if (!agent) {
-        tooltip.style.display = "none";
-        return;
-      }
-      const view = agentView(agent);
-      tooltip.innerHTML =
-        '<strong>' + (view.name || ('Agent ' + view.id)) + '</strong>' +
-        '<br>state: ' + view.phase +
-        '<br>activity: ' + (view.current_action || view.intention || "none") +
-        '<br>energy: ' + view.energy.toFixed(3) +
-        '<br>satiety: ' + view.satiety.toFixed(3) +
-        '<br>physical_health: ' + view.physical_health.toFixed(3) +
-        '<br>mental_health: ' + view.mental_health.toFixed(3) +
-        '<br>wellbeing: ' + view.wellbeing.toFixed(3);
-      tooltip.style.left = `${event.clientX + 14}px`;
-      tooltip.style.top = `${event.clientY + 14}px`;
-      tooltip.style.display = "block";
     }
 
     function draw(now = performance.now()) {
@@ -2230,10 +2597,11 @@
       ctx.beginPath();
       if (shape === "female") {
         // 菱形
-        ctx.moveTo(x, y - size);
-        ctx.lineTo(x + size, y);
-        ctx.lineTo(x, y + size);
-        ctx.lineTo(x - size, y);
+        const diamondSize = size * Math.SQRT2;
+        ctx.moveTo(x, y - diamondSize);
+        ctx.lineTo(x + diamondSize, y);
+        ctx.lineTo(x, y + diamondSize);
+        ctx.lineTo(x - diamondSize, y);
         ctx.closePath();
       } else {
         // 方形 (默认 male)
@@ -2985,25 +3353,6 @@
       }
     }
 
-    socialCanvas.addEventListener("mousemove", (event) => {
-      hoveredNetworkNodeId = nearestSocialNode(event);
-      showNetworkTooltip(hoveredNetworkNodeId, event);
-      drawSocialNetwork();
-    });
-    socialCanvas.addEventListener("mouseleave", () => {
-      hoveredNetworkNodeId = null;
-      tooltip.style.display = "none";
-      drawSocialNetwork();
-    });
-    socialCanvas.addEventListener("click", (event) => {
-      const nodeId = nearestSocialNode(event);
-      if (!nodeId) return;
-      selectedId = nodeId;
-      updatePanel();
-      draw();
-      drawSocialNetwork();
-    });
-
     function redrawMapInteraction() {
       updatePanelAnchors();
       draw();
@@ -3082,7 +3431,6 @@
       selectedId = agent ? agent.id : null;
       updatePanel();
       draw();
-      drawSocialNetwork();
     });
     window.addEventListener("resize", resize);
 

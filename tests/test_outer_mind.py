@@ -42,8 +42,8 @@ class OuterMindDynamicsTest(unittest.TestCase):
         right = make_social_agent(2, trait=make_trait(study=0.0, exercise=0.0, music=0.0, game=1.0))
         mirrored = OuterMindDynamics()
         unmirrored = OuterMindDynamics()
-        mirrored.set_relationship(2, 1, closeness=0.8, trust=0.5)
-        unmirrored.set_relationship(2, 1, closeness=0.05, trust=0.5)
+        mirrored.set_relationship(2, 1, closeness=0.8)
+        unmirrored.set_relationship(2, 1, closeness=0.05)
 
         mirrored.advance([left, right], 3600)
         unmirrored.advance([left, right], 3600)
@@ -52,8 +52,8 @@ class OuterMindDynamicsTest(unittest.TestCase):
 
     def test_cognitive_dissonance_cools_one_sided_closeness(self) -> None:
         dynamics = OuterMindDynamics()
-        dynamics.set_relationship(1, 2, closeness=0.9, trust=0.5)
-        dynamics.set_relationship(2, 1, closeness=0.1, trust=0.5)
+        dynamics.set_relationship(1, 2, closeness=0.9)
+        dynamics.set_relationship(2, 1, closeness=0.1)
         before_gap = dynamics.closeness(1, 2) - dynamics.closeness(2, 1)
 
         dynamics.advance([], 3600)
@@ -62,20 +62,9 @@ class OuterMindDynamicsTest(unittest.TestCase):
         self.assertLess(dynamics.closeness(1, 2), 0.9)
         self.assertLess(after_gap, before_gap)
 
-    def test_partner_agreeableness_accelerates_directed_trust_growth(self) -> None:
-        low_agreeable = make_social_agent(1)
-        high_agreeable = make_social_agent(2)
-        low_agreeable.trait.personality["agreeableness"] = 0.1
-        high_agreeable.trait.personality["agreeableness"] = 0.9
-        dynamics = OuterMindDynamics()
-
-        dynamics.advance([low_agreeable, high_agreeable], 3600)
-
-        self.assertGreater(dynamics.trust(1, 2), dynamics.trust(2, 1))
-
     def test_relationship_and_social_memory_decay_without_interaction(self) -> None:
         dynamics = OuterMindDynamics()
-        dynamics.set_relationship(1, 2, closeness=0.6, trust=0.5)
+        dynamics.set_relationship(1, 2, closeness=0.6)
         trait = make_trait()
         trait.personality["extraversion"] = 0.8
         agent = make_social_agent(
@@ -88,7 +77,6 @@ class OuterMindDynamicsTest(unittest.TestCase):
         dynamics.advance([agent], 3600)
 
         self.assertLess(dynamics.closeness(1, 2), 0.6)
-        self.assertLess(dynamics.trust(1, 2), 0.5)
         self.assertLess(agent.state.social_contribution, 0.8)
         self.assertLess(agent.state.social_return, 0.8)
         self.assertLess(agent.state.extrinsic_satisfaction, 0.8)
@@ -102,7 +90,7 @@ class OuterMindDynamicsTest(unittest.TestCase):
         )
         responder = make_social_agent(2, state=make_state(energy=0.9))
         responder.trait.personality["agreeableness"] = 1.0
-        dynamics.set_relationship(2, 1, closeness=0.8, trust=0.5)
+        dynamics.set_relationship(2, 1, closeness=0.8)
 
         delta = dynamics.advance([initiator, responder], 3600)
 
@@ -112,7 +100,7 @@ class OuterMindDynamicsTest(unittest.TestCase):
         self.assertGreater(initiator.state.extrinsic_satisfaction, 0.3)
         self.assertNotEqual(initiator.trait.wellbeing, 0.4)
         self.assertLess(delta.energy_changes[1], 0.0)
-        self.assertGreater(delta.relationship_changes[(1, 2)][0], 0.0)
+        self.assertGreater(delta.relationship_changes[(1, 2)], 0.0)
 
 
 if __name__ == "__main__":

@@ -29,6 +29,7 @@ class InnerMindConfig:
     body_damage_per_hour: float = 0.040
     satisfaction_recovery_threshold: float = 0.65
     bad_body_threshold: float = 0.25
+    pleasure_approach_rate: float = 0.30
 
 
 @dataclass(frozen=True)
@@ -89,7 +90,10 @@ class InnerMindDynamics:
             state.intrinsic_satisfaction = _clamp01(
                 state.intrinsic_satisfaction * math.exp(-self.config.intrinsic_decay_per_hour * hours)
             )
-        state.emotion["pleasure"] = state.intrinsic_satisfaction
+        state.emotion["pleasure"] += (
+            (state.intrinsic_satisfaction - state.emotion["pleasure"])
+            * min(self.config.pleasure_approach_rate * hours, 1.0)
+        )
         return InnerMindDelta(
             intrinsic_satisfaction=state.intrinsic_satisfaction - before_intrinsic,
             pleasure=state.emotion["pleasure"] - before_pleasure,
@@ -195,7 +199,10 @@ class InnerMindDynamics:
 
     def _project_pad(self, trait: StudentTrait, state: StudentState, action: str) -> None:
         skill = _clamp01(trait.skills.get(action, 0.5))
-        state.emotion["pleasure"] = state.intrinsic_satisfaction
+        state.emotion["pleasure"] += (
+            (state.intrinsic_satisfaction - state.emotion["pleasure"])
+            * self.config.pleasure_approach_rate
+        )
         state.emotion["arousal"] = self._arousal_target(action, skill)
         state.emotion["dominance"] = skill
 

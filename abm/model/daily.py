@@ -60,6 +60,7 @@ class StudentDailyModel(Model):
         self._slot_attended_today: set[tuple[int, int]] = set()
         self._attendance_day = self.day
         self._metrics_history: list[dict[str, object]] = []
+        self._hourly_archive: list[dict[str, object]] = []
 
         dormitories = self._available_regions_by_function("dormitory")
         if not dormitories:
@@ -146,8 +147,8 @@ class StudentDailyModel(Model):
     def _trait_for(self, agent_id: int) -> StudentTrait:
         rng = self._local_rng(agent_id, "trait")
         neuroticism = rng.betavariate(4.0, 4.0)
-        # 随机生成模长为1的四维向量，interests 和 skills 共享同一方向
-        raw = [rng.gauss(0.0, 1.0) for _ in range(4)]
+        # 随机生成模长为1的四维向量（正象限），interests 和 skills 共享同一方向
+        raw = [abs(rng.gauss(0.0, 1.0)) for _ in range(4)]
         norm = math.hypot(*raw)
         interest_vec = [v / norm for v in raw]
         return StudentTrait(
@@ -195,18 +196,83 @@ class StudentDailyModel(Model):
     def all_arrived(self) -> bool:
         return False
 
-    def state_counts(self) -> dict[str, int]:
-        counts: dict[str, int] = {}
-        for student in self.students:
-            counts[student.context.phase] = counts.get(student.context.phase, 0) + 1
-        return counts
-
     def activity_counts(self) -> dict[str, int]:
         counts: dict[str, int] = {}
         for student in self.students:
             activity = student.context.current_action or student.context.intention or "none"
             counts[activity] = counts.get(activity, 0) + 1
         return counts
+
+    def average_traits(self) -> dict[str, object]:
+        n = len(self.students) or 1
+        interests: dict[str, float] = {}
+        skills: dict[str, float] = {}
+        for student in self.students:
+            for k, v in student.trait.interests.items():
+                interests[k] = interests.get(k, 0.0) + abs(v)
+            for k, v in student.trait.skills.items():
+                skills[k] = skills.get(k, 0.0) + abs(v)
+        return {
+            "interests": {k: v / n for k, v in interests.items()},
+            "skills": {k: v / n for k, v in skills.items()},
+        }
+
+    def average_personality(self) -> dict[str, float]:
+        n = len(self.students) or 1
+        result: dict[str, float] = {}
+        for student in self.students:
+            for k, v in student.trait.personality.items():
+                result[k] = result.get(k, 0.0) + v
+        return {k: v / n for k, v in result.items()}
+
+    def average_emotion(self) -> dict[str, float]:
+        n = len(self.students) or 1
+        result: dict[str, float] = {}
+        for student in self.students:
+            for k, v in student.state.emotion.items():
+                result[k] = result.get(k, 0.0) + v
+        return {k: v / n for k, v in result.items()}
+
+    def social_graph_snapshot(self) -> dict[str, object]:
+        friend_threshold = 0.30
+        intimate_threshold = 0.70
+        pairs = {
+            tuple(sorted((tie.source_id, tie.target_id)))
+            for tie in self.outer_mind.ties()
+            if tie.source_id != tie.target_id
+        }
+        ties: list[dict[str, object]] = []
+        for source_id, target_id in sorted(pairs):
+            source_closeness = self.outer_mind.closeness(source_id, target_id)
+            target_closeness = self.outer_mind.closeness(target_id, source_id)
+            strongest_closeness = max(source_closeness, target_closeness)
+            if strongest_closeness < friend_threshold:
+                continue
+            tier = "intimate" if strongest_closeness >= intimate_threshold else "friend"
+            mutual_threshold = intimate_threshold if tier == "intimate" else friend_threshold
+            ties.append({
+                "source": source_id,
+                "target": target_id,
+                "closeness": strongest_closeness,
+                "tier": tier,
+                "mutual": (
+                    source_closeness >= mutual_threshold
+                    and target_closeness >= mutual_threshold
+                ),
+            })
+        connected: set[int] = set()
+        for t in ties:
+            connected.add(int(t["source"]))
+            connected.add(int(t["target"]))
+        nodes: list[dict[str, object]] = []
+        for student in self.students:
+            sid = int(student.unique_id)
+            if sid in connected:
+                nodes.append({
+                    "id": sid,
+                    "gender": student.profile.gender,
+                })
+        return {"nodes": nodes, "ties": ties}
 
     def agent_snapshots(
         self,
@@ -314,16 +380,11 @@ class StudentDailyModel(Model):
             "seconds_per_step": self.seconds_per_step,
             "average_metrics": self.average_metrics(),
             "course_slot_attendance": self.course_slot_attendance(),
-            "state_counts": self.state_counts(),
             "activity_counts": self.activity_counts(),
-            "social_dynamics": {
-                "delivered_invitations": 0,
-                "accepted_invitations": 0,
-                "rejected_invitations": 0,
-                "expired_invitations": 0,
-                "tier_counts": {},
-            },
-            "social_network": self.social_network_snapshot(),
+            "average_traits": self.average_traits(),
+            "average_personality": self.average_personality(),
+            "average_emotion": self.average_emotion(),
+            "social_graph": self.social_graph_snapshot(),
             "all_arrived": False,
             "arrived_count": 0,
             "agent_count": len(self.students),
@@ -333,13 +394,21 @@ class StudentDailyModel(Model):
             ),
         }
         if include_metrics_history:
-            state["metrics_history"] = self.metrics_history()
+            mh = self.metrics_history()
+            state["metrics_history"] = mh["metrics_history"]
+            state["hourly_archive"] = mh["hourly_archive"]
         return state
 
-    def metrics_history(self, *, tail: int | None = None) -> list[dict[str, object]]:
+    def metrics_history(self, *, tail: int | None = None) -> dict[str, object]:
         if tail is None or tail <= 0:
-            return list(self._metrics_history)
-        return list(self._metrics_history[-tail:])
+            return {
+                "metrics_history": list(self._metrics_history),
+                "hourly_archive": list(self._hourly_archive),
+            }
+        return {
+            "metrics_history": list(self._metrics_history[-tail:]),
+            "hourly_archive": list(self._hourly_archive),
+        }
 
     def step(self) -> None:
         for student in self.students:
@@ -351,9 +420,10 @@ class StudentDailyModel(Model):
         self.elapsed_seconds += self.seconds_per_step
         # Record metrics snapshot for frontend history
         m = self.average_metrics()
+        current_elapsed = self.elapsed_seconds
         self._metrics_history.append({
             "step": self.campus_steps,
-            "elapsed_seconds": self.elapsed_seconds,
+            "elapsed_seconds": current_elapsed,
             "energy": m["energy"],
             "satiety": m["satiety"],
             "physical_health": m["physical_health"],
@@ -363,44 +433,36 @@ class StudentDailyModel(Model):
             "extrinsic_satisfaction": m["extrinsic_satisfaction"],
         })
 
-    def social_network_snapshot(self) -> dict[str, object]:
-        active_ties = [tie for tie in self.outer_mind.ties() if tie.closeness >= 0.05 or tie.trust >= 0.05]
-        degree: dict[int, int] = {}
-        tier_counts = {"intimate": 0, "friend": 0, "acquaintance": 0}
-        edges: list[dict[str, object]] = []
-        for tie in active_ties:
-            tier = self._social_tier(tie.closeness)
-            tier_counts[tier] += 1
-            degree[tie.source_id] = degree.get(tie.source_id, 0) + 1
-            degree[tie.target_id] = degree.get(tie.target_id, 0) + 1
-            edges.append(
-                {
-                    "source": tie.source_id,
-                    "target": tie.target_id,
-                    "intimacy": tie.closeness,
-                    "trust": tie.trust,
-                    "tier": tier,
+        # Compress completed hours into _hourly_archive
+        current_hour = current_elapsed // 3600
+        prev_elapsed = current_elapsed - self.seconds_per_step
+        prev_hour = prev_elapsed // 3600
+        if prev_elapsed >= 0 and current_hour > prev_hour:
+            for hour_idx in range(prev_hour, current_hour):
+                hour_start = hour_idx * 3600
+                hour_end = hour_start + 3600
+                hour_samples = [
+                    s for s in self._metrics_history
+                    if hour_start <= s["elapsed_seconds"] < hour_end
+                ]
+                if not hour_samples:
+                    continue
+                avg: dict[str, object] = {
+                    "bucketIndex": hour_idx,
+                    "elapsed_seconds": hour_start,
+                    "count": len(hour_samples),
                 }
-            )
+                for key in ("energy", "satiety", "physical_health", "mental_health",
+                            "wellbeing", "intrinsic_satisfaction", "extrinsic_satisfaction"):
+                    avg[key] = sum(s[key] for s in hour_samples) / len(hour_samples)
+                if not self._hourly_archive or self._hourly_archive[-1].get("bucketIndex") != hour_idx:
+                    self._hourly_archive.append(avg)
 
-        nodes = [
-            {
-                "id": int(student.unique_id),
-                "name": student.profile.name,
-                "degree": degree.get(int(student.unique_id), 0),
-            }
-            for student in self.students
-            if degree.get(int(student.unique_id), 0) > 0
-        ]
-        return {"nodes": nodes, "edges": edges, "tier_counts": tier_counts}
-
-    @staticmethod
-    def _social_tier(closeness: float) -> str:
-        if closeness >= 0.70:
-            return "intimate"
-        if closeness >= 0.30:
-            return "friend"
-        return "acquaintance"
+        # Trim _metrics_history: keep only the last 13 hours
+        max_keep_seconds = 13 * 3600
+        cutoff = current_elapsed - max_keep_seconds
+        while self._metrics_history and self._metrics_history[0]["elapsed_seconds"] < cutoff:
+            self._metrics_history.pop(0)
 
     def course_sessions_for(self, student: DailyStudentAgent):
         return self.academic_schedule.sessions_for(student_id=int(student.unique_id), day=self.day)
