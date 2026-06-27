@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from threading import Lock
+from threading import Event, Lock, Thread
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
@@ -36,7 +36,8 @@ METRIC_KEYS = (
     "extrinsic_satisfaction",
 )
 METRICS_BUCKET_LIMIT = 12
-MAX_STEPS_PER_ADVANCE = 25
+MAX_STEPS_PER_ADVANCE = 5
+BACKGROUND_IDLE_SLEEP_SECONDS = 0.05
 
 
 def aggregate_metric_buckets(
@@ -101,6 +102,9 @@ class VisualRuntime:
         self.playing = False
         self.speed = 1.0
         self.last_wall = time.monotonic()
+        self._stop_event = Event()
+        self._worker = Thread(target=self._background_loop, name="abm-simulation-worker", daemon=True)
+        self._worker.start()
 
     def _load_summary(self) -> dict[str, Any]:
         with self.config.summary_path.open("r", encoding="utf-8") as f:
@@ -129,15 +133,20 @@ class VisualRuntime:
             return
         self.model.save_checkpoint(self.checkpoint_path)
 
+    def shutdown(self) -> None:
+        self._stop_event.set()
+        self._worker.join(timeout=5)
+        if self.checkpoint_path:
+            with self.lock:
+                self.save_checkpoint()
+
     def state(self, *, include_all_paths: bool = False) -> dict[str, Any]:
         with self.lock:
-            self._advance_locked()
             return self._state_locked(include_all_paths=include_all_paths)
 
     def control(self, payload: dict[str, Any]) -> dict[str, Any]:
         action = payload.get("action")
         with self.lock:
-            self._advance_locked()
             if action == "play":
                 self.playing = True
                 self.last_wall = time.monotonic()
@@ -197,26 +206,37 @@ class VisualRuntime:
                 "error": "agent not found",
             }
 
-    def _advance_locked(self) -> None:
+    def _background_loop(self) -> None:
+        while not self._stop_event.is_set():
+            with self.lock:
+                sleep_seconds = self._advance_locked()
+            self._stop_event.wait(sleep_seconds)
+
+    def _advance_locked(self) -> float:
         if not self.playing:
             self.last_wall = time.monotonic()
-            return
+            return BACKGROUND_IDLE_SLEEP_SECONDS
 
         interval = self.model.seconds_per_step / self.speed
         now = time.monotonic()
         due_steps = int((now - self.last_wall) // interval)
         steps = min(due_steps, MAX_STEPS_PER_ADVANCE)
         if steps <= 0:
-            return
+            elapsed = now - self.last_wall
+            return max(0.001, min(BACKGROUND_IDLE_SLEEP_SECONDS, interval - elapsed))
 
         prev_steps = self.model.campus_steps
         for _ in range(steps):
             self.model.step()
-        self.last_wall += steps * interval
+        if due_steps > MAX_STEPS_PER_ADVANCE:
+            self.last_wall = time.monotonic()
+        else:
+            self.last_wall += steps * interval
 
         # Auto-save checkpoint every 100 campus steps
         if self.checkpoint_path and self.model.campus_steps // 100 != prev_steps // 100:
             self.save_checkpoint()
+        return 0.0 if due_steps > steps else BACKGROUND_IDLE_SLEEP_SECONDS
 
     def _state_locked(self, *, include_all_paths: bool = False) -> dict[str, Any]:
         state = self.model.snapshot(
@@ -350,8 +370,8 @@ def main() -> None:
     # Graceful shutdown: save checkpoint on Ctrl+C
     def _shutdown(signum, frame):
         print(f"\nShutting down...")
+        runtime.shutdown()
         if runtime.checkpoint_path:
-            runtime.save_checkpoint()
             print(f"Checkpoint saved to {runtime.checkpoint_path}")
         os._exit(0)
 
@@ -369,7 +389,10 @@ def main() -> None:
     print(f"Viewer HTML served from {VIEWER_TEMPLATE}")
     if args.viewer_out:
         print(f"Viewer HTML copy written to {args.viewer_out}")
-    server.serve_forever()
+    try:
+        server.serve_forever()
+    finally:
+        runtime.shutdown()
 
 if __name__ == "__main__":
     main()
