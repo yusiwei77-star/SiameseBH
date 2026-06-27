@@ -73,6 +73,7 @@ class StudentContext:
     last_decision_reason: str | None = None
     current_speed_cells_per_step: float | None = None
     movement_progress: float = 0.0
+    activity_history: list[dict[str, object]] = field(default_factory=list)
 
 
 def parse_time_to_seconds(text: str) -> int:

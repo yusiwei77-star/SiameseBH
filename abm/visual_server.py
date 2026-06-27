@@ -26,6 +26,60 @@ DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8789
 VIEWER_TEMPLATE = Path(__file__).with_name("viewer_template.html")
 LEGACY_VIEWER_OUTPUT = Path("debug/agent_viewer.html")
+METRIC_KEYS = (
+    "energy",
+    "satiety",
+    "physical_health",
+    "mental_health",
+    "wellbeing",
+    "intrinsic_satisfaction",
+    "extrinsic_satisfaction",
+)
+METRICS_BUCKET_LIMIT = 12
+MAX_STEPS_PER_ADVANCE = 25
+
+
+def aggregate_metric_buckets(
+    source: list[dict[str, object]],
+    *,
+    bucket_seconds: int,
+    current_elapsed: int,
+    limit: int = METRICS_BUCKET_LIMIT,
+) -> list[dict[str, object]]:
+    buckets: dict[int, dict[str, object]] = {}
+    for sample in source:
+        elapsed = int(sample.get("elapsed_seconds", 0) or 0)
+        bucket_index = elapsed // bucket_seconds
+        bucket = buckets.get(bucket_index)
+        if bucket is None:
+            bucket = {
+                "bucketIndex": bucket_index,
+                "elapsed_seconds": bucket_index * bucket_seconds,
+                "count": 0,
+                "step": sample.get("step"),
+            }
+            for key in METRIC_KEYS:
+                bucket[key] = 0.0
+            buckets[bucket_index] = bucket
+
+        weight = int(sample.get("count", 1) or 1)
+        bucket["count"] = int(bucket["count"]) + weight
+        bucket["step"] = sample.get("step")
+        for key in METRIC_KEYS:
+            bucket[key] = float(bucket[key]) + float(sample.get(key, 0) or 0) * weight
+
+    rows = [buckets[key] for key in sorted(buckets)]
+    for bucket in rows:
+        count = int(bucket.get("count", 0) or 0)
+        for key in METRIC_KEYS:
+            bucket[key] = float(bucket[key]) / count if count > 0 else 0.0
+
+    current_bucket = current_elapsed // bucket_seconds
+    if rows and rows[-1].get("bucketIndex") == current_bucket:
+        rows.pop()
+
+    need_lead_in = len(rows) > limit
+    return rows[-(limit + 1):] if need_lead_in else rows[-limit:]
 
 
 @dataclass(frozen=True)
@@ -111,6 +165,38 @@ class VisualRuntime:
         with self.lock:
             return self.model.metrics_history(tail=tail)
 
+    def agent_metrics(self, agent_id: int) -> dict[str, Any]:
+        with self.lock:
+            for student in self.model.students:
+                if int(student.unique_id) == agent_id:
+                    current_elapsed = int(self.model.elapsed_seconds)
+                    hourly_source = getattr(student, "metrics_hourly_archive", [])
+                    if not hourly_source:
+                        hourly_source = getattr(student, "metrics_history", [])
+                    hourly = aggregate_metric_buckets(
+                        list(hourly_source),
+                        bucket_seconds=3600,
+                        current_elapsed=current_elapsed,
+                    )
+                    daily = aggregate_metric_buckets(
+                        list(getattr(student, "metrics_hourly_archive", [])),
+                        bucket_seconds=86400,
+                        current_elapsed=current_elapsed,
+                    )
+                    return {
+                        "agent_id": agent_id,
+                        "hourly": hourly,
+                        "daily": daily,
+                        "metrics_history": hourly,
+                    }
+            return {
+                "agent_id": agent_id,
+                "hourly": [],
+                "daily": [],
+                "metrics_history": [],
+                "error": "agent not found",
+            }
+
     def _advance_locked(self) -> None:
         if not self.playing:
             self.last_wall = time.monotonic()
@@ -118,7 +204,8 @@ class VisualRuntime:
 
         interval = self.model.seconds_per_step / self.speed
         now = time.monotonic()
-        steps = int((now - self.last_wall) // interval)
+        due_steps = int((now - self.last_wall) // interval)
+        steps = min(due_steps, MAX_STEPS_PER_ADVANCE)
         if steps <= 0:
             return
 
@@ -166,6 +253,10 @@ class VisualHandler(BaseHTTPRequestHandler):
                 query = parse_qs(parsed.query)
                 tail = int(query.get("tail", ["0"])[0] or 0)
                 self._send_json(self.runtime.metrics_history(tail=tail if tail > 0 else None))
+            elif path == "/api/agent/metrics":
+                query = parse_qs(parsed.query)
+                agent_id = int(query.get("id", ["0"])[0] or 0)
+                self._send_json(self.runtime.agent_metrics(agent_id))
             else:
                 self.send_error(HTTPStatus.NOT_FOUND, "not found")
         except Exception as exc:  # pragma: no cover - keeps server debuggable

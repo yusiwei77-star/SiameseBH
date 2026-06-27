@@ -54,7 +54,10 @@
     }
     .left-panel {
       left: var(--left-panel-x, 0px);
-      padding-bottom: 54px;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
     }
     .right-panel {
       left: var(--right-panel-x, calc(100% - var(--side-panel-width)));
@@ -89,7 +92,7 @@
       letter-spacing: 0;
       font-weight: 500;
       text-shadow: none;
-      color: rgba(74, 43, 20, 0.74);
+      color: rgba(74, 43, 20, 0.80);
     }
     button, select {
       border: 0;
@@ -131,7 +134,7 @@
     .submap-controls {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 1px;
+      gap: 3px;
       margin: 4px 0 0;
     }
     .submap-controls button {
@@ -139,7 +142,7 @@
       min-height: 17px;
       padding: 0 0 0 10px;
       text-align: left;
-      font-size: 10px;
+      font-size: 11px;
       line-height: 1.15;
       color: rgba(74, 43, 20, 0.68);
     }
@@ -174,20 +177,34 @@
       vertical-align: baseline;
     }
     #simFacts {
-      display: grid;
-      grid-template-columns: minmax(54px, 1fr) minmax(92px, 1fr) minmax(70px, 1fr) minmax(64px, 1fr);
-      column-gap: 8px;
-      row-gap: 5px;
+      display: flex;
+      flex-direction: column;
       margin: 8px 0 0;
+      gap: 4px;
+    }
+    .sim-row-group {
+      display: flex;
+      align-items: baseline;
     }
     .sim-row {
-      display: contents;
+      display: flex;
+      flex: 1;
     }
-    .sim-key { color: rgba(74, 43, 20, 0.72); text-shadow: none; white-space: nowrap; text-align: left; }
+    .sim-dot {
+      flex-shrink: 0;
+      width: 12px;
+      text-align: center;
+      font-size: 8px;
+      color: rgba(74, 43, 20, 0.72);
+      line-height: 1.45;
+    }
+    .sim-key { flex: 1; color: rgba(74, 43, 20, 0.72); font-size: 11px; text-shadow: none; white-space: nowrap; text-align: left; padding-left: 6px; }
     .sim-val {
+      flex: 1;
       text-align: center;
       font-family: inherit;
-      font-size: 10px;
+      font-size: 11px;
+      color: rgba(74, 43, 20, 0.90);
       text-shadow: none;
     }
     .activity-bar {
@@ -217,8 +234,8 @@
       bottom: 2px;
       left: 50%;
       transform: translateX(-50%);
-      font-size: 8px;
-      color: rgba(74, 43, 20, 0.50);
+      font-size: 9px;
+      color: rgba(74, 43, 20, 0.62);
       font-family: "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive;
       pointer-events: none;
     }
@@ -247,6 +264,7 @@
       line-height: 1.15;
       padding: 4px 2px;
       text-align: center;
+      text-transform: capitalize;
       min-height: 26px;
       text-decoration: none;
       overflow: hidden;
@@ -260,6 +278,33 @@
     .metrics-tab.active {
       color: #3b2412;
       border-bottom: 1.4px solid rgba(74, 43, 20, 0.78);
+    }
+    .metrics-heading-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .metrics-heading-row h2 {
+      margin: 0;
+    }
+    .metrics-toggle-group {
+      flex-shrink: 0;
+    }
+    .metrics-toggle-sep {
+      color: rgba(74, 43, 20, 0.40);
+      font-size: 9px;
+    }
+    .metrics-toggle {
+      border: 0;
+      background: transparent;
+      font: inherit;
+      font-size: 9px;
+      color: rgba(74, 43, 20, 0.68);
+      cursor: pointer;
+      padding: 0;
+    }
+    .metrics-toggle.active {
+      color: #3b2412;
     }
     .metrics-stage {
       position: relative;
@@ -296,9 +341,8 @@
       background: transparent;
     }
     .layer-controls {
-      display: grid;
-      grid-template-columns: repeat(6, minmax(0, 1fr));
-      gap: 3px;
+      display: flex;
+      justify-content: space-between;
       margin-top: 6px;
     }
     .layer-row {
@@ -323,7 +367,7 @@
       cursor: pointer;
       color: #3b2412;
       font-family: "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive;
-      font-size: 9px;
+      font-size: 10px;
       font-weight: bold;
       line-height: 1;
     }
@@ -337,7 +381,7 @@
     }
     .layer-row label {
       color: #3b2412;
-      font-size: 8.5px;
+      font-size: 10px;
       text-shadow: none;
       cursor: pointer;
       overflow: hidden;
@@ -355,6 +399,135 @@
       white-space: nowrap;
       border: 0;
     }
+    #agentInfo {
+      flex: 1 1 0;
+      min-height: 0;
+      border: 0.48px solid rgba(74, 43, 20, 0.16);
+      border-radius: 3px;
+      padding: 5px 7px;
+      background: rgba(255, 250, 240, 0.10);
+      margin-bottom: 20px;
+    }
+    .agent-info-placeholder {
+      color: rgba(74, 43, 20, 0.48);
+      font-size: 11px;
+      text-shadow: none;
+      margin: 0;
+      line-height: 1.55;
+    }
+    /* ── Résumé-style agent card ── */
+    .ai-card {
+      padding: 0;
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+    }
+    .ai-header {
+      margin-top: 4px;
+      margin-bottom: 8px;
+      margin-left: 6px;
+    }
+    .ai-name {
+      font-size: 13px;
+      color: #2b1a0a;
+      letter-spacing: -0.2px;
+    }
+    .ai-gender {
+      font-size: 11px;
+      color: rgba(74, 43, 20, 0.50);
+      margin-left: 8px;
+    }
+    .ai-rule {
+      border: 0;
+      border-top: 0.48px solid rgba(74, 43, 20, 0.14);
+      margin: 5px 0;
+    }
+    .ai-info-section {
+      margin-bottom: 2px;
+    }
+    .ai-info-row {
+      display: flex;
+      gap: 3px;
+      font-size: 11px;
+      line-height: 1.9;
+      align-items: baseline;
+      margin-left: 6px;
+    }
+    .ai-info-label {
+      color: rgba(74, 43, 20, 0.50);
+      flex-shrink: 0;
+      margin-right: 2px;
+    }
+    .ai-info-value {
+      color: rgba(74, 43, 20, 0.90);
+      flex-shrink: 0;
+      margin-right: 18px;
+    }
+    .ai-activity-section {
+      margin: 3px 0;
+    }
+    .ai-dot {
+      flex-shrink: 0;
+      font-size: 7px;
+      vertical-align: middle;
+      margin-right: 3px;
+      position: relative;
+      top: -0.5px;
+    }
+    .ai-dot.active, .ai-dot.moving { color: rgba(74, 43, 20, 0.90); }
+    .ai-dot.history { color: rgba(74, 43, 20, 0.30); }
+    .ai-line {
+      display: flex;
+      align-items: baseline;
+      font-size: 11px;
+      line-height: 1.8;
+      color: rgba(74, 43, 20, 0.90);
+      margin-left: 6px;
+    }
+    .ai-line.ai-idle {
+      justify-content: center;
+      color: rgba(74, 43, 20, 0.40);
+    }
+    .ai-line.ai-hist {
+      color: rgba(74, 43, 20, 0.42);
+    }
+    .ai-line.ai-empty {
+      justify-content: center;
+      color: rgba(74, 43, 20, 0.30);
+    }
+    .ai-col1 {
+      width: 55px;
+      flex-shrink: 0;
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .ai-col2 {
+      width: 55px;
+      flex-shrink: 0;
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .ai-col3 {
+      width: 80px;
+      flex-shrink: 0;
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .ai-sep {
+      flex-shrink: 0;
+      width: 12px;
+      text-align: center;
+    }
+    .ai-history {
+      font-size: 11px;
+      line-height: 1.85;
+    }
     .hint {
       color: rgba(74, 43, 20, 0.68);
       font-size: 10px;
@@ -369,7 +542,7 @@
       width: calc(100% - 36px);
       margin: 0;
       color: rgba(74, 43, 20, 0.42);
-      font-size: 9px;
+      font-size: 10px;
       font-style: italic;
       line-height: 1.35;
       text-shadow: none;
@@ -433,7 +606,9 @@
       <h2>Simulation</h2>
       <dl id="simFacts"></dl>
       <canvas class="section-divider" aria-hidden="true"></canvas>
-      <p class="hint">Click an agent to show its route; click empty map space to clear selection. Mouse wheel zooms, right-button drag pans.</p>
+      <div id="agentInfo">
+        <p class="agent-info-placeholder">Click an agent on the map to view details and show its route; click empty map space to clear selection. Mouse wheel zooms, right-button drag pans.</p>
+      </div>
       <p class="map-credit">Inspired by the Marauder's Map from Harry Potter.</p>
     </aside>
     <main>
@@ -441,7 +616,14 @@
       <div id="tooltip" class="tooltip"></div>
     </main>
     <aside class="right-panel">
-      <h2 id="metricsHeading">Average Metrics</h2>
+      <div class="metrics-heading-row">
+        <h2 id="metricsHeading">Metrics Trends</h2>
+        <span class="metrics-toggle-group">
+          <button type="button" class="metrics-toggle active" data-view="hourly">Hourly</button>
+          <span class="metrics-toggle-sep">/</span>
+          <button type="button" class="metrics-toggle" data-view="daily">Daily</button>
+        </span>
+      </div>
       <div class="metrics-tabs" id="metricsTabs"></div>
       <div class="metrics-stage" id="metricsStage"></div>
       <canvas class="section-divider" aria-hidden="true"></canvas>
@@ -550,6 +732,26 @@
     var socialGraphHash = '';
     var SOCIAL_GRAPH_ANIM_MS = 800;
     var socialGraphDrawn = '';
+    // Panel animation state (smooth transitions when selecting/deselecting an agent)
+    var panelAnimFrom = null;        // { interests, skills, personality, emotion } — values at animation start
+    var panelAnimTarget = null;      // target values, or null to indicate "showing averages"
+    var panelAnimStart = 0;
+    var PANEL_ANIM_MS = 600;
+    var lastPanelSelectionId = null; // tracks previous selectedId for change detection
+    var agentMetricsHistory = null;  // fetched per-agent metric buckets: { hourly, daily }
+    var agentMetricsId = null;       // which agent the cached history belongs to
+    var metricsFadeAlpha = 1.0;      // current chart opacity
+    var metricsFadeState = 'visible'; // 'visible' | 'fadingOut' | 'hidden' | 'fadingIn'
+    var metricsFadeStart = 0;        // when current fade phase started
+    var METRICS_FADE_MS = 200;       // duration of each fade half
+    var metricsFadeReady = true;     // true when target data is available for fade-in
+    var metricsPendingClear = false; // true = clear agent cache at fade-out → fade-in switch
+    var metricsKeepOldData = false;  // true = keep old agent data visible during fade-out
+    var metricsFadeSnapshot = null;  // frozen rows used while a data layer fades in
+    var metricsFadeSnapshotMode = null;
+    var metricsFadeSnapshotHold = false; // keep the final fade-in frame on the frozen layer
+    var pursuitsHighlightAction = null;   // current_action to highlight, or null
+    var pursuitsHighlightAlpha = 0;       // 0..1 interpolated highlight visibility
     let agentNameLayer = null;
     let mapLayers = null;
     let activeSubmapId = restoreActiveSubmapId();
@@ -695,12 +897,18 @@
       return normalized;
     }
 
-    function aggregateMetricsHistory(modeKey, currentElapsed) {
+    function aggregateMetricsHistory(modeKey, currentElapsed, sourceOverride) {
       const mode = METRICS_BUCKET_MODES[modeKey] || METRICS_BUCKET_MODES.hourly;
       const buckets = new Map();
       // Daily mode: aggregate from compressed hourlyArchive (permanent, tiny)
       // Hourly mode: aggregate from raw metricsHistory (windowed, ~13 hours)
-      const source = modeKey === "daily" ? hourlyArchive : metricsHistory;
+      // sourceOverride: when provided (e.g. agent-specific history), use it directly
+      var source;
+      if (sourceOverride) {
+        source = sourceOverride;
+      } else {
+        source = modeKey === "daily" ? hourlyArchive : metricsHistory;
+      }
       for (const sample of source) {
         const elapsed = Number(sample.elapsed_seconds);
         if (!Number.isFinite(elapsed)) continue;
@@ -799,7 +1007,31 @@
         window.__sim = sim;
         window.__simReceivedAt = simReceivedAt;
         appendMetricsSnapshot(sim);
-        if (selectedId && !findAgent(selectedId)) selectedId = null;
+        if (selectedId && !findAgent(selectedId)) {
+          captureMetricsFadeSnapshot();
+          startPanelAnimation(null);
+          selectedId = null;
+          pursuitsHighlightAction = null;
+          metricsFadeReady = true;
+          metricsPendingClear = true;
+          metricsFadeState = 'fadingOut';
+          metricsFadeStart = performance.now();
+        }
+        // Keep pursuits highlight in sync with selected agent's current action
+        if (selectedId) {
+          var selAgent = findAgent(selectedId);
+          if (selAgent) {
+            var selCtx = selAgent.context || {};
+            var selPhase = (selCtx.phase || "").toLowerCase();
+            var newPursuit = selPhase === "activity" ? selCtx.current_action
+                           : selPhase === "moving" ? selCtx.intention
+                           : null;
+            if (newPursuit !== pursuitsHighlightAction) {
+              pursuitsHighlightAction = newPursuit;
+              if (newPursuit) pursuitsHighlightAlpha = 0;  // fade-in new pursuit; fade-out if null
+            }
+          }
+        }
         updatePanel();
       } catch (error) {
         stateFetchError = error instanceof Error ? error.message : String(error);
@@ -1628,7 +1860,154 @@
     function animationLoop(now) {
       draw(now);
       drawSocialGraph(now);
+      if (panelAnimFrom && now - panelAnimStart < PANEL_ANIM_MS) {
+        drawAnimatedRadars(now);
+      } else if (panelAnimFrom && now - panelAnimStart >= PANEL_ANIM_MS) {
+        // Animation complete
+        if (!panelAnimTarget) {
+          // Settled back on averages
+          panelAnimFrom = null;
+          panelAnimTarget = null;
+        } else {
+          // Settled on agent data
+          panelAnimFrom = null;
+        }
+        panelAnimStart = 0;
+        updatePanel();
+      }
+      // Metrics chart fade animation — state machine: fadeOut → [hidden] → fadeIn
+      if (metricsFadeState !== 'visible') {
+        var mfElapsed = now - metricsFadeStart;
+        var mfT = Math.min(1, mfElapsed / METRICS_FADE_MS);
+        mfT = 1 - Math.pow(1 - mfT, 3); // ease-out cubic
+        if (metricsFadeState === 'fadingOut') {
+          metricsFadeAlpha = 1 - mfT;
+          if (mfT >= 1) {
+            metricsFadeAlpha = 0;
+            if (metricsPendingClear) {
+              agentMetricsHistory = null;
+              agentMetricsId = null;
+              metricsPendingClear = false;
+            }
+            metricsKeepOldData = false;
+            if (metricsFadeReady) startMetricsFadeIn(now);
+            else {
+              metricsFadeState = 'hidden';
+              metricsFadeStart = now;
+            }
+          }
+        } else if (metricsFadeState === 'fadingIn') {
+          metricsFadeAlpha = mfT;
+          if (mfT >= 1) {
+            metricsFadeAlpha = 1;
+            metricsFadeState = 'visible';
+            metricsFadeSnapshotHold = true;
+          }
+        }
+        // 'hidden': alpha stays at 0, waiting for metricsFadeReady
+        renderAverageMetrics();
+        if (metricsFadeSnapshotHold) clearMetricsFadeSnapshot();
+      }
+      // Pursuits highlight animation — ease toward target
+      var pursuitsTarget = pursuitsHighlightAction ? 1 : 0;
+      var pursuitsPrev = pursuitsHighlightAlpha;
+      pursuitsHighlightAlpha += (pursuitsTarget - pursuitsHighlightAlpha) * 0.10;
+      if (Math.abs(pursuitsHighlightAlpha - pursuitsPrev) > 0.001) {
+        drawActivityBar();
+      }
       requestAnimationFrame(animationLoop);
+    }
+
+    function isPanelAnimating() {
+      return Boolean(panelAnimFrom && performance.now() - panelAnimStart < PANEL_ANIM_MS);
+    }
+
+    function getCurrentPanelDisplay() {
+      // Return the values currently shown (interpolated if mid-animation, settled otherwise)
+      if (panelAnimTarget && panelAnimFrom && panelAnimStart > 0) {
+        var elapsed = performance.now() - panelAnimStart;
+        if (elapsed < PANEL_ANIM_MS) {
+          var rawT = elapsed / PANEL_ANIM_MS;
+          var t = Math.min(1, rawT);
+          t = 1 - Math.pow(1 - t, 3); // ease-out cubic, matches social graph
+          return interpolatePanelValues(panelAnimFrom, panelAnimTarget, t);
+        }
+      }
+      if (panelAnimTarget) {
+        return panelAnimTarget; // Settled on agent
+      }
+      return getAveragePanelValues(); // Showing averages
+    }
+
+    function getAveragePanelValues() {
+      return {
+        interests: sim && sim.average_traits ? Object.assign({}, sim.average_traits.interests) : {},
+        skills: sim && sim.average_traits ? Object.assign({}, sim.average_traits.skills) : {},
+        personality: sim ? Object.assign({}, sim.average_personality) : {},
+        emotion: sim ? Object.assign({}, sim.average_emotion) : {},
+      };
+    }
+
+    function interpolatePanelValues(from, to, t) {
+      var result = {};
+      var sections = ["interests", "skills", "personality", "emotion"];
+      for (var s = 0; s < sections.length; s++) {
+        var section = sections[s];
+        result[section] = {};
+        var fromData = from[section] || {};
+        var toData = to[section] || {};
+        var keys = Object.keys(toData);
+        for (var k = 0; k < keys.length; k++) {
+          var key = keys[k];
+          var fromVal = Number(fromData[key]) || 0;
+          var toVal = Number(toData[key]) || 0;
+          result[section][key] = fromVal + (toVal - fromVal) * t;
+        }
+      }
+      return result;
+    }
+
+    function startPanelAnimation(newId) {
+      var now = performance.now();
+      panelAnimFrom = getCurrentPanelDisplay();
+
+      if (newId) {
+        var agent = findAgent(newId);
+        if (agent) {
+          var v = agentView(agent);
+          panelAnimTarget = {
+            interests: Object.assign({}, v.interests),
+            skills: Object.assign({}, v.skills),
+            personality: Object.assign({}, v.personality),
+            emotion: Object.assign({}, v.emotion),
+          };
+        } else {
+          panelAnimTarget = null;
+        }
+      } else {
+        panelAnimTarget = null;
+      }
+
+      panelAnimStart = now;
+    }
+
+    function drawAnimatedRadars(now) {
+      var rawT = (now - panelAnimStart) / PANEL_ANIM_MS;
+      var t = Math.min(1, rawT);
+      t = 1 - Math.pow(1 - t, 3); // ease-out cubic
+      var data = interpolatePanelValues(panelAnimFrom, panelAnimTarget || getAveragePanelValues(), t);
+      // Bypass hash cache during animation
+      clearRadarCache();
+      drawOneRadar(interestsRadar, data.interests, TRAIT_KEYS, TRAIT_LABELS);
+      drawOneRadar(skillsRadar, data.skills, TRAIT_KEYS, TRAIT_LABELS);
+      drawOneRadar(personalityRadar, data.personality, PERSONALITY_KEYS, PERSONALITY_LABELS);
+      drawOneRadar(emotionRadar, data.emotion, EMOTION_KEYS, EMOTION_LABELS);
+    }
+
+    function clearRadarCache() {
+      [interestsRadar, skillsRadar, personalityRadar, emotionRadar].forEach(function(c) {
+        if (c) c._radarHash = '';
+      });
     }
 
     function updatePanel() {
@@ -1636,24 +2015,180 @@
       document.getElementById("playBtn").textContent = sim.server.playing ? "Pause" : "Play";
       document.getElementById("speedBtn").textContent = `${sim.server.speed}x`;
       const simRows = [
-        ["time", sim.time, "day", sim.day],
-        ["model", sim.server.model, "agents", sim.agent_count],
-        ["step", sim.step, "sec/step", sim.seconds_per_step],
-        ["speed", `${sim.server.speed}x`, "interval", `${sim.server.sync_interval_seconds.toFixed(2)}s`],
+        [["Time", sim.time], ["Day", sim.day]],
+        [["Model", sim.server.model], ["Agents", sim.agent_count]],
+        [["Step", sim.step], ["Sec/step", sim.seconds_per_step]],
+        [["Speed", `${sim.server.speed}x`], ["Interval", `${sim.server.sync_interval_seconds.toFixed(2)}s`]],
       ];
-      document.getElementById("simFacts").innerHTML = simRows.map(row =>
-        `<div class="sim-row"><span class="sim-key">${row[0]}</span><span class="sim-val">${row[1]}</span><span class="sim-key">${row[2]}</span><span class="sim-val">${row[3]}</span></div>`
+      document.getElementById("simFacts").innerHTML = simRows.map(pair =>
+        `<div class="sim-row-group">`
+        + `<div class="sim-row"><span class="sim-key">${pair[0][0]}</span><span class="sim-val">${pair[0][1]}</span></div>`
+        + `<span class="sim-dot">·</span>`
+        + `<div class="sim-row"><span class="sim-key">${pair[1][0]}</span><span class="sim-val">${pair[1][1]}</span></div>`
+        + `</div>`
       ).join("");
       drawActivityBar();
-      drawTraitsRadars();
-      drawDispositionRadars();
+      if (!isPanelAnimating()) {
+        if (selectedId) {
+          // Show live agent values (not stale snapshot)
+          var agent = findAgent(selectedId);
+          if (agent) {
+            var v = agentView(agent);
+            var data = {
+              interests: v.interests,
+              skills: v.skills,
+              personality: v.personality,
+              emotion: v.emotion,
+            };
+            drawTraitsRadars(data);
+            drawDispositionRadars(data);
+            // Keep panelAnimTarget in sync for future animation starts
+            panelAnimTarget = data;
+          }
+        } else {
+          // Showing population averages
+          panelAnimTarget = null;
+          drawTraitsRadars();
+          drawDispositionRadars();
+        }
+        // else: mid-animation, animationLoop handles drawing
+      }
       const selected = selectedId ? findAgent(selectedId) : null;
+      renderAgentInfo(selected);
       updateSubmapControls();
-      renderAverageMetrics();
+      // Skip during fade — animationLoop drives redraws at 60fps to avoid jitter
+      if (metricsFadeState === 'visible') renderAverageMetrics();
     }
 
     function setFacts(id, rows) {
       document.getElementById(id).innerHTML = rows.map(([key, value]) => `<dt>${key}</dt><dd>${value}</dd>`).join("");
+    }
+
+    function pathDisplayLen(agent, context) {
+      if (!agent) return 0;
+      var cp = agentPathCache.get(String(agent.id));
+      if (cp && cp.length > 1) return cp.length;
+      return context.path ? context.path.length : 0;
+    }
+
+    function renderAgentInfo(agent) {
+      const container = document.getElementById("agentInfo");
+      if (!container) return;
+      if (!agent) {
+        container.innerHTML = '<p class="agent-info-placeholder">Click an agent on the map to view details and show its route; click empty map space to clear selection. Mouse wheel zooms, right-button drag pans.</p>';
+        return;
+      }
+      const v = agentView(agent);
+      const profile = agent.profile || {};
+      const context = agent.context || {};
+
+      function fmt(val) {
+        if (val === null || val === undefined || val === "") return "—";
+        if (typeof val === "number") return Number.isInteger(val) ? String(val) : val.toFixed(2);
+        return String(val);
+      }
+      function hms(s) {
+        if (s === null || s === undefined) return "—";
+        var sec = Number(s);
+        if (!isFinite(sec) || sec < 0) return "—";
+        var h = Math.floor(sec / 3600);
+        var m = Math.floor((sec % 3600) / 60);
+        var rs = Math.floor(sec % 60);
+        var parts = [];
+        if (h > 0) parts.push(h + "h");
+        if (m > 0) parts.push(m + "m");
+        parts.push(rs + "s");
+        return parts.join("");
+      }
+      function fmtTime(s) {
+        if (s === null || s === undefined) return "—";
+        var sec = Number(s);
+        if (!isFinite(sec) || sec < 0) return "—";
+        var h = Math.floor(sec / 3600);
+        var m = Math.floor((sec % 3600) / 60);
+        return h + ":" + (m < 10 ? "0" : "") + m;
+      }
+
+      var phase = v.phase || "IDLE";
+      var phaseLower = phase.toLowerCase();
+      var targetLabel = v.target_region_name || context.target_region_id || "";
+
+      // --- Header: name + gender ---
+      var genderStr = profile.gender || "";
+      var genderSpan = genderStr ? '<span class="ai-gender">' + genderStr + '</span>' : "";
+
+      // --- Info rows: home/workplace, walk/meal ---
+      var homeName = profile.origin_name || profile.home || "—";
+      var workName = v.workplace_name || profile.workplace || "—";
+      var walkSpeed = fmt(profile.normal_walk_speed_cells_per_step);
+      var mealSpeed = fmt(profile.normal_meal_speed);
+
+      var infoRows =
+        '<div class="ai-info-row"><span class="ai-info-label">Home</span><span class="ai-info-value">' + homeName + '</span><span class="ai-info-label">Work</span><span class="ai-info-value">' + workName + '</span></div>' +
+        '<div class="ai-info-row"><span class="ai-info-label">Walk</span><span class="ai-info-value">' + walkSpeed + '</span><span class="ai-info-label">Meal</span><span class="ai-info-value">' + mealSpeed + '</span></div>';
+
+      function toPresentContinuous(action) {
+        if (!action) return "?";
+        var map = {
+          sleep: "Sleeping", eat: "Eating", study: "Studying",
+          exercise: "Exercising", social: "Socializing", service: "Working",
+          rest: "Resting",
+        };
+        return map[action] || (action.charAt(0).toUpperCase() + action.slice(1));
+      }
+      function toPast(action) {
+        if (!action) return "?";
+        var map = {
+          sleep: "Slept", eat: "Ate", study: "Studied",
+          exercise: "Exercised", social: "Socialized", service: "Worked",
+          rest: "Rested",
+        };
+        return map[action] || action;
+      }
+
+      // --- Activity line ---
+      var activityHtml = "";
+      if (phaseLower === "moving") {
+        var cp = agentPathCache.get(String(agent.id));
+        var totalCells = cp ? cp.length : 0;
+        var remainingCells = Math.max(0, totalCells - (v.path_index || 0) - 1);
+        var intentLabel = v.intention || "?";
+        activityHtml = '<div class="ai-line"><span class="ai-dot moving">●</span><span class="ai-col1">' + intentLabel + '</span><span class="ai-sep">·</span><span class="ai-col2">' + (targetLabel || '—') + '</span><span class="ai-sep">·</span><span class="ai-col3">' + remainingCells + ' cells left</span></div>';
+      } else if (phaseLower === "activity") {
+        var actionLabel = toPresentContinuous(v.current_action);
+        activityHtml = '<div class="ai-line"><span class="ai-dot active">●</span><span class="ai-col1">' + actionLabel + '</span><span class="ai-sep">·</span><span class="ai-col2">' + (targetLabel || '—') + '</span><span class="ai-sep">·</span><span class="ai-col3">' + hms(context.remaining_action_seconds) + ' left</span></div>';
+      } else {
+        activityHtml = '<div class="ai-line ai-idle">— Idle —</div>';
+      }
+
+      // --- History ---
+      var historyHtml = "";
+      var history = v.activity_history || [];
+      if (history.length > 0) {
+        for (var hi = 0; hi < history.length; hi++) {
+          var h = history[hi];
+          var histAct = toPast(h.action);
+          var histLoc = String(h.location || "");
+          var histTime = 'Day' + (h.day || '?') + ' ' + fmtTime(h.started_at);
+          historyHtml += '<div class="ai-line ai-hist"><span class="ai-dot history">●</span><span class="ai-col1">' + histAct + '</span><span class="ai-sep">·</span><span class="ai-col2">' + (histLoc || '—') + '</span><span class="ai-sep">·</span><span class="ai-col3">' + histTime + '</span></div>';
+        }
+      } else {
+        historyHtml = '<div class="ai-line ai-hist ai-empty">No history yet</div>';
+      }
+
+      var html =
+        '<div class="ai-card">' +
+          '<div class="ai-header">' +
+            '<span class="ai-name">' + fmt(profile.name || "Unknown") + '</span>' + genderSpan +
+          '</div>' +
+          '<div class="ai-info-section">' + infoRows + '</div>' +
+          '<hr class="ai-rule">' +
+          '<div class="ai-activity-section">' + activityHtml + '</div>' +
+          '<hr class="ai-rule">' +
+          '<div class="ai-history">' + historyHtml + '</div>' +
+        '</div>';
+
+      container.innerHTML = html;
     }
 
     function appendMetricsSnapshot(simData) {
@@ -1730,11 +2265,15 @@
           if (!btn) return;
           selectMetric(btn.dataset.metric);
         });
-        var heading = document.getElementById("metricsHeading");
-        if (heading) {
-          heading.style.cursor = "pointer";
-          heading.title = "Click to toggle between hourly and daily averages";
-          heading.addEventListener("click", toggleMetricsView);
+        var toggleGroup = document.querySelector(".metrics-toggle-group");
+        if (toggleGroup) {
+          toggleGroup.addEventListener("click", function(event) {
+            var btn = event.target.closest("button[data-view]");
+            if (!btn) return;
+            var view = btn.dataset.view;
+            if (view === metricsViewMode) return;
+            toggleMetricsView();
+          });
         }
       }
       // Build one pane per metric (transparent stage; only the active one is shown)
@@ -1805,45 +2344,88 @@
       for (var i = 0; i < n; i++) {
         var count = acts[ACTIVITY_ORDER[i]] || 0;
         var intensity = count / maxCount;
-        var alpha = 0.07 + intensity * 0.70;
+        var alpha = 0.20 + intensity * 0.80;
         var x = i * segW + gap / 2;
         var w = segW - gap;
 
-        // Fill
-        ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + alpha.toFixed(2) + ")";
-        ctx.fillRect(x, barY, w, barH);
+        // Hatched fill; density is fixed and opacity encodes activity count.
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(x, barY, w, barH);
+        ctx.clip();
+        var hatchCenterX = x + w / 2;
+        var hatchCenterY = barY + barH / 2;
+        ctx.strokeStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + alpha.toFixed(2) + ")";
+        ctx.lineWidth = 0.2;
+        var hatchSpacing = 2;
+        var hatchExtent = w + barH;
+        [50, 130].forEach(function(hatchAngle) {
+          ctx.save();
+          ctx.translate(hatchCenterX, hatchCenterY);
+          ctx.rotate((hatchAngle * Math.PI) / 180);
+          ctx.translate(-hatchCenterX, -hatchCenterY);
+          for (var hatch = -hatchExtent; hatch <= hatchExtent; hatch += hatchSpacing) {
+            ctx.beginPath();
+            ctx.moveTo(x - hatchExtent, hatchCenterY + hatch);
+            ctx.lineTo(x + w + hatchExtent, hatchCenterY + hatch);
+            ctx.stroke();
+          }
+          ctx.restore();
+        });
+        ctx.restore();
 
-        // Border
-        ctx.strokeStyle = "rgba(74, 43, 20, 0.26)";
-        ctx.lineWidth = 0.5;
+        // Border — highlight when this slot matches the selected agent's current action
+        var isPursuit = pursuitsHighlightAction === ACTIVITY_ORDER[i];
+        var pursuitA = pursuitsHighlightAlpha;
+        var borderAlpha = isPursuit ? 0.26 + pursuitA * 0.49 : 0.26;
+        var labelAlpha = isPursuit ? 0.58 + pursuitA * 0.32 : 0.58;
+        var borderWidth = isPursuit ? 1.0 + pursuitA * 0.5 : 0.5;
+        ctx.strokeStyle = "rgba(74, 43, 20, " + borderAlpha.toFixed(2) + ")";
+        ctx.lineWidth = borderWidth;
         ctx.strokeRect(x, barY, w, barH);
 
         // Count number
-        ctx.fillStyle = intensity > 0.45 ? "#f0ede6" : "#3b2412";
+        ctx.fillStyle = "rgba(59, 36, 18, 0.82)";
         ctx.font = '9px "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive';
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(count, x + w / 2, barY + barH / 2);
 
         // Label below
-        ctx.fillStyle = "rgba(74, 43, 20, 0.58)";
-        ctx.font = '7px "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive';
+        ctx.fillStyle = "rgba(74, 43, 20, " + labelAlpha.toFixed(2) + ")";
+        ctx.font = '9px "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive';
         ctx.fillText(ACTIVITY_LABELS[i], x + w / 2, barY + barH + 13);
       }
 
       ctx.restore();
     }
 
-    function drawTraitsRadars() {
-      var traits = sim.average_traits;
-      if (!traits) return;
-      drawOneRadar(interestsRadar, traits.interests, TRAIT_KEYS, TRAIT_LABELS);
-      drawOneRadar(skillsRadar, traits.skills, TRAIT_KEYS, TRAIT_LABELS);
+    function drawTraitsRadars(dataOverride) {
+      var interestsData, skillsData;
+      if (dataOverride) {
+        interestsData = dataOverride.interests;
+        skillsData = dataOverride.skills;
+      } else {
+        var traits = sim.average_traits;
+        if (!traits) return;
+        interestsData = traits.interests;
+        skillsData = traits.skills;
+      }
+      drawOneRadar(interestsRadar, interestsData, TRAIT_KEYS, TRAIT_LABELS);
+      drawOneRadar(skillsRadar, skillsData, TRAIT_KEYS, TRAIT_LABELS);
     }
 
-    function drawDispositionRadars() {
-      drawOneRadar(personalityRadar, sim.average_personality, PERSONALITY_KEYS, PERSONALITY_LABELS);
-      drawOneRadar(emotionRadar, sim.average_emotion, EMOTION_KEYS, EMOTION_LABELS);
+    function drawDispositionRadars(dataOverride) {
+      var personalityData, emotionData;
+      if (dataOverride) {
+        personalityData = dataOverride.personality;
+        emotionData = dataOverride.emotion;
+      } else {
+        personalityData = sim.average_personality;
+        emotionData = sim.average_emotion;
+      }
+      drawOneRadar(personalityRadar, personalityData, PERSONALITY_KEYS, PERSONALITY_LABELS);
+      drawOneRadar(emotionRadar, emotionData, EMOTION_KEYS, EMOTION_LABELS);
     }
 
     function drawOneRadar(canvas, data, keys, labels) {
@@ -1908,22 +2490,36 @@
       }
 
       // Data polygon
-      ctx.beginPath();
+      var dataPath = new Path2D();
       for (var i = 0; i < n; i++) {
         var val = clamp01(Number(data[keys[i]]) || 0);
         var angle = (2 * Math.PI * i) / n - Math.PI / 2;
         var rx = cx + Math.cos(angle) * R * val;
         var ry = cy + Math.sin(angle) * R * val;
-        if (i === 0) ctx.moveTo(rx, ry);
-        else ctx.lineTo(rx, ry);
+        if (i === 0) dataPath.moveTo(rx, ry);
+        else dataPath.lineTo(rx, ry);
       }
-      ctx.closePath();
-      ctx.fillStyle = "rgba(74, 43, 20, 0.10)";
-      ctx.fill();
-      ctx.strokeStyle = "rgba(74, 43, 20, 0.52)";
-      ctx.lineWidth = 0.9;
+      dataPath.closePath();
+      ctx.save();
+      ctx.clip(dataPath);
+      ctx.translate(cx, cy);
+      ctx.rotate((130 * Math.PI) / 180);
+      ctx.translate(-cx, -cy);
+      ctx.strokeStyle = "rgba(74, 43, 20, 0.85)";
+      ctx.lineWidth = 0.2;
+      var hatchSpacing = 2;
+      var hatchExtent = cssW + cssH;
+      for (var hatch = -hatchExtent; hatch <= hatchExtent; hatch += hatchSpacing) {
+        ctx.beginPath();
+        ctx.moveTo(-hatchExtent, hatch);
+        ctx.lineTo(hatchExtent, hatch);
+        ctx.stroke();
+      }
+      ctx.restore();
+      ctx.strokeStyle = "rgba(74, 43, 20, 0.35)";
+      ctx.lineWidth = 1;
       ctx.lineJoin = "round";
-      ctx.stroke();
+      ctx.stroke(dataPath);
 
       // Data dots
       for (var i = 0; i < n; i++) {
@@ -1932,14 +2528,14 @@
         var rx = cx + Math.cos(angle) * R * val;
         var ry = cy + Math.sin(angle) * R * val;
         ctx.beginPath();
-        ctx.arc(rx, ry, 2.0, 0, Math.PI * 2);
-        ctx.fillStyle = "#4a2b14";
+        ctx.arc(rx, ry, 1.6, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(74, 43, 20, 0.72)";
         ctx.fill();
       }
 
       // Axis labels
       ctx.fillStyle = "rgba(74, 43, 20, 0.55)";
-      ctx.font = '7px "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive';
+      ctx.font = '8px "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive';
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       var labelDist = R + 11;
@@ -1965,6 +2561,22 @@
       var graph = sim.social_graph;
       var nodes = graph && graph.nodes ? graph.nodes : [];
       var ties = graph && graph.ties ? graph.ties : [];
+      var focusId = null;
+      if (selectedId !== null && selectedId !== undefined) {
+        for (var ni = 0; ni < nodes.length; ni++) {
+          if (nodes[ni].id === selectedId) { focusId = selectedId; break; }
+        }
+      }
+      if (focusId !== null) {
+        var keepIds = {};
+        keepIds[focusId] = true;
+        for (var ti = 0; ti < ties.length; ti++) {
+          if (ties[ti].source === focusId) keepIds[ties[ti].target] = true;
+          else if (ties[ti].target === focusId) keepIds[ties[ti].source] = true;
+        }
+        nodes = nodes.filter(function(n) { return keepIds[n.id]; });
+        ties = ties.filter(function(t) { return keepIds[t.source] && keepIds[t.target]; });
+      }
       var hash = nodes.map(function(n) { return n.id; }).sort().join(',')
         + '|' + ties.map(function(t) { return t.source + '-' + t.target + ':' + t.tier + ':' + (t.mutual ? 'solid' : 'dashed'); }).sort().join(',')
         + '|' + cssW + 'x' + cssH;
@@ -1978,12 +2590,12 @@
       var cx = cssW / 2;
       var cy = cssH / 2;
       var rx = cssW / 2 - 12;
-      var ry = cssH / 2 - 9;
+      var ry = cssH / 2;
 
       if (socialGraphHash !== hash) {
         socialGraphPrevLayout = socialGraphLayout;
         socialGraphLayout = nodes.length
-          ? computeGraphLayout(nodes, ties, cx, cy, rx, ry, socialGraphPrevLayout)
+          ? computeGraphLayout(nodes, ties, cx, cy, rx, ry, socialGraphPrevLayout, focusId)
           : null;
         socialGraphAnimStart = now;
         socialGraphHash = hash;
@@ -2020,6 +2632,11 @@
         socialGraphLayout = null;
         socialGraphPrevLayout = null;
         socialGraphDrawn = hash;
+        ctx.fillStyle = "rgba(74, 43, 20, 0.30)";
+        ctx.font = '10px "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive';
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("No social ties yet", cx, cy);
         ctx.restore();
         return;
       }
@@ -2067,8 +2684,9 @@
         var a = pos[t.source];
         var b = pos[t.target];
         if (!a || !b) continue;
-        ctx.strokeStyle = "rgba(74, 43, 20, 0.24)";
-        ctx.lineWidth = 0.7;
+        var tieOnFocus = focusId !== null && focusId !== undefined && (t.source === focusId || t.target === focusId);
+        ctx.strokeStyle = tieOnFocus ? "rgba(74, 43, 20, 0.40)" : (focusId !== null && focusId !== undefined ? "rgba(74, 43, 20, 0.12)" : "rgba(74, 43, 20, 0.24)");
+        ctx.lineWidth = 1;
         ctx.setLineDash(t.mutual ? [] : [3, 3]);
         if (t.tier === "intimate") {
           var dx = b.x - a.x;
@@ -2092,14 +2710,26 @@
       ctx.setLineDash([]);
 
       // Draw nodes — match map agent shapes and sizes
-      var size = 1.5;
-      ctx.fillStyle = "rgba(74, 43, 20, 0.55)";
+      var baseSize = 1.5;
+      var neighborTier = {};
+      if (focusId !== null && focusId !== undefined) {
+        for (var ti2 = 0; ti2 < ties.length; ti2++) {
+          var t2 = ties[ti2];
+          if (t2.source === focusId) neighborTier[t2.target] = t2.tier;
+          else if (t2.target === focusId) neighborTier[t2.source] = t2.tier;
+        }
+      }
       for (var i = 0; i < nodes.length; i++) {
         var n = nodes[i];
         var p = pos[n.id];
         if (!p) continue;
+        var isFocus = focusId !== null && focusId !== undefined && n.id === focusId;
+        var isNeighbor = !isFocus && focusId !== null && focusId !== undefined;
+        var isIntimateNeighbor = isNeighbor && neighborTier[n.id] === "intimate";
+        var nodeSize = isFocus ? 2.5 : (isIntimateNeighbor ? 2.0 : (isNeighbor ? 1.8 : baseSize));
+        ctx.fillStyle = isFocus ? "rgba(74, 43, 20, 0.85)" : (isIntimateNeighbor ? "rgba(74, 43, 20, 0.55)" : (isNeighbor ? "rgba(74, 43, 20, 0.40)" : "rgba(74, 43, 20, 0.55)"));
         if (n.gender === "female") {
-          var ds = size * Math.SQRT2;
+          var ds = nodeSize * Math.SQRT2;
           ctx.beginPath();
           ctx.moveTo(p.x, p.y - ds);
           ctx.lineTo(p.x + ds, p.y);
@@ -2108,7 +2738,7 @@
           ctx.closePath();
           ctx.fill();
         } else {
-          ctx.fillRect(p.x - size, p.y - size, size * 2, size * 2);
+          ctx.fillRect(p.x - nodeSize, p.y - nodeSize, nodeSize * 2, nodeSize * 2);
         }
       }
 
@@ -2119,7 +2749,7 @@
       ctx.restore();
     }
 
-    function computeGraphLayout(nodes, ties, cx, cy, rx, ry, previousPositions = null) {
+    function computeGraphLayout(nodes, ties, cx, cy, rx, ry, previousPositions, focusId) {
       var positions = {};
       var previous = previousPositions || {};
       // Preserve existing nodes. Seed new nodes near their existing neighbors.
@@ -2174,7 +2804,11 @@
             var dx = pj.x - pi.x;
             var dy = pj.y - pi.y;
             var dist = Math.sqrt(dx * dx + dy * dy) || 0.5;
-            var force = kRep / (dist * dist);
+            var repK = kRep;
+            if (focusId !== null && focusId !== undefined && nodes[i].id !== focusId && nodes[j].id !== focusId) {
+              repK = kRep * 10;
+            }
+            var force = repK / (dist * dist);
             var fx = (dx / dist) * force;
             var fy = (dy / dist) * force;
             pi.vx -= fx; pi.vy -= fy;
@@ -2199,8 +2833,13 @@
         }
         for (var id in positions) {
           var p = positions[id];
-          p.vx += (cx - p.x) * 0.0005;
-          p.vy += (cy - p.y) * 0.0005;
+          if (focusId !== null && focusId !== undefined && String(id) === String(focusId)) {
+            p.vx += (cx - p.x) * 0.1;
+            p.vy += (cy - p.y) * 0.1;
+          } else {
+            p.vx += (cx - p.x) * 0.0005;
+            p.vy += (cy - p.y) * 0.0005;
+          }
           var speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
           if (speed > maxSpeed) { p.vx = (p.vx / speed) * maxSpeed; p.vy = (p.vy / speed) * maxSpeed; }
           p.vx *= damping; p.vy *= damping;
@@ -2229,29 +2868,81 @@
     function updateMetricsHeading() {
       var heading = document.getElementById("metricsHeading");
       if (!heading) return;
-      var mode = METRICS_BUCKET_MODES[metricsViewMode] || METRICS_BUCKET_MODES.hourly;
-      var currentElapsed = sim ? sim.elapsed_seconds : undefined;
-      var visible = aggregateMetricsHistory(metricsViewMode, currentElapsed);
-      var hasLeadIn = visible.length > mode.limit;
-      var shown = visible.slice(hasLeadIn ? 1 : 0);
-      if (!shown.length) {
-        heading.textContent = "Average Metrics (0" + mode.unit + ")";
-        return;
-      }
-      var firstLabel = (shown[0].bucketIndex + 1) + mode.unit;
-      var lastLabel = (shown[shown.length - 1].bucketIndex + 1) + mode.unit;
-      heading.textContent = "Average Metrics (" + (shown.length === 1 ? firstLabel : firstLabel + "-" + lastLabel) + ")";
+      heading.textContent = "Metrics Trends";
     }
 
     function toggleMetricsView() {
       metricsViewMode = metricsViewMode === "hourly" ? "daily" : "hourly";
+      var toggles = document.querySelectorAll(".metrics-toggle");
+      for (var i = 0; i < toggles.length; i++) {
+        toggles[i].classList.toggle("active", toggles[i].dataset.view === metricsViewMode);
+      }
       renderAverageMetrics();
     }
 
-    function visibleMetrics() {
-      if (!metricsHistory.length) return [];
+    function visibleMetrics(sourceOverride) {
+      var source = sourceOverride || metricsHistory;
+      if (!source.length) return [];
       var currentElapsed = sim ? sim.elapsed_seconds : undefined;
-      return aggregateMetricsHistory(metricsViewMode, currentElapsed);
+      return aggregateMetricsHistory(metricsViewMode, currentElapsed, sourceOverride || undefined);
+    }
+
+    function liveMetricRows() {
+      var useAgentData = agentMetricsHistory
+        && ((selectedId && String(agentMetricsId) === String(selectedId)) || metricsKeepOldData);
+      return useAgentData ? agentMetricRowsForMode(metricsViewMode) : visibleMetrics();
+    }
+
+    function agentMetricRowsForMode(modeKey) {
+      if (!agentMetricsHistory) return [];
+      if (Array.isArray(agentMetricsHistory)) {
+        return aggregateMetricsHistory(modeKey, sim ? sim.elapsed_seconds : undefined, agentMetricsHistory);
+      }
+      var rows = agentMetricsHistory[modeKey] || [];
+      return Array.isArray(rows) ? rows : [];
+    }
+
+    function hasAgentMetricPayload() {
+      if (!agentMetricsHistory) return false;
+      if (Array.isArray(agentMetricsHistory)) return agentMetricsHistory.length > 0;
+      return ["hourly", "daily"].some(function(modeKey) {
+        var rows = agentMetricsHistory[modeKey];
+        return Array.isArray(rows) && rows.length > 0;
+      });
+    }
+
+    function cloneMetricRows(rows) {
+      return (rows || []).map(function(row) {
+        return Object.assign({}, row);
+      });
+    }
+
+    function captureMetricsFadeSnapshot() {
+      metricsFadeSnapshot = cloneMetricRows(liveMetricRows());
+      metricsFadeSnapshotMode = metricsViewMode;
+      metricsFadeSnapshotHold = false;
+    }
+
+    function clearMetricsFadeSnapshot() {
+      metricsFadeSnapshot = null;
+      metricsFadeSnapshotMode = null;
+      metricsFadeSnapshotHold = false;
+    }
+
+    function startMetricsFadeIn(now) {
+      captureMetricsFadeSnapshot();
+      metricsFadeAlpha = 0;
+      metricsFadeState = 'fadingIn';
+      metricsFadeStart = now;
+    }
+
+    function metricRowsForDraw() {
+      if ((metricsFadeState === 'fadingOut' || metricsFadeState === 'fadingIn' || metricsFadeSnapshotHold)
+          && metricsFadeSnapshot
+          && metricsFadeSnapshotMode === metricsViewMode) {
+        return metricsFadeSnapshot;
+      }
+      return liveMetricRows();
     }
 
     function drawMetricChart(canvas, metricKey) {
@@ -2260,10 +2951,7 @@
       var cssH = wrap.offsetHeight;
       if (!cssW || !cssH) return;
 
-      var visible = visibleMetrics();
-
       var dpr = window.devicePixelRatio || 1;
-      // Supersample at 1.5x for sharper text (same approach as agent name layer)
       var supersample = 1.5;
       var bufW = Math.max(1, Math.round(cssW * dpr * supersample));
       var bufH = Math.max(1, Math.round(cssH * dpr * supersample));
@@ -2284,17 +2972,22 @@
       if (plotW <= 0 || plotH <= 0) { ctx.restore(); return; }
       var colW = plotW / NUM_COLS;
 
-      // Build a map: column index (0..11) → metric value.
-      // When more than NUM_COLS buckets exist, visible[0] is a lead-in (off-screen
-      // previous bucket) and visible[1..NUM_COLS] map to columns 0..NUM_COLS-1.
+      var visible = metricRowsForDraw();
+
       var hasLeadIn = visible.length > NUM_COLS;
-      var dataStart = hasLeadIn ? 1 : 0; // skip lead-in for dots/labels
+      var dataStart = hasLeadIn ? 1 : 0;
       var colVals = {};
       var leadInVal = hasLeadIn ? clamp01(Number(visible[0][metricKey]) || 0) : null;
       for (var i = dataStart; i < visible.length; i++) {
         var col = i - dataStart;
         if (col < NUM_COLS) colVals[col] = clamp01(Number(visible[i][metricKey]) || 0);
       }
+
+      var drawColVals = colVals;
+      var drawLeadInVal = leadInVal;
+      var drawHasLeadIn = hasLeadIn;
+      var drawVisible = visible;
+      var drawDataStart = dataStart;
 
       function colCenterX(col) { return pad.left + col * colW + colW / 2; }
       function toY(val) { return cssH - pad.bottom - clamp01(val) * plotH; }
@@ -2313,83 +3006,136 @@
       ctx.setLineDash([]);
 
       // ---- Bottom labels ----
-      var labelFont = '8px "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive';
+      var labelFont = '9px "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive';
       ctx.font = labelFont;
       ctx.fillStyle = "rgba(74, 43, 20, 0.52)";
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
       var labelY = cssH - pad.bottom + 5;
       for (var col = 0; col < NUM_COLS; col++) {
-        if (!(col in colVals)) continue; // no data for this column
-        var bucket = visible[col + dataStart];
+        if (!(col in drawColVals)) continue; // no data for this column
+        var bucket = drawVisible[col + drawDataStart];
         var suffix = isHourly ? "h" : "d";
         ctx.fillText((bucket.bucketIndex + 1) + suffix, colCenterX(col), labelY);
       }
 
+      var dataLayer = document.createElement("canvas");
+      dataLayer.width = bufW;
+      dataLayer.height = bufH;
+      var dataCtx = dataLayer.getContext("2d");
+      dataCtx.save();
+      dataCtx.scale(dpr * supersample, dpr * supersample);
+
       // ---- Fill area under line ----
-      var colsWithData = Object.keys(colVals).map(Number).sort(function(a, b) { return a - b; });
-      if (colsWithData.length >= 1) {
-        ctx.beginPath();
-        if (hasLeadIn && leadInVal !== null) {
-          ctx.moveTo(pad.left, cssH - pad.bottom);
-          ctx.lineTo(pad.left, toY(leadInVal));
+      var colsWithData = Object.keys(drawColVals).map(Number).sort(function(a, b) { return a - b; });
+
+      // ---- No-data placeholder ----
+      if (colsWithData.length === 0) {
+        dataCtx.fillStyle = "rgba(74, 43, 20, 0.38)";
+        dataCtx.textAlign = "center";
+        dataCtx.textBaseline = "middle";
+        var placeholderFont = '11px "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive';
+        dataCtx.font = placeholderFont;
+        var placeX = pad.left + plotW / 2;
+        var placeY = pad.top + plotH / 2;
+        if (!isHourly) {
+          dataCtx.fillText("Need 24+ hours of simulation time for daily data.", placeX, placeY);
         } else {
-          ctx.moveTo(colCenterX(colsWithData[0]), cssH - pad.bottom);
+          dataCtx.fillText("Waiting for simulation data...", placeX, placeY);
+        }
+        dataCtx.restore();
+        ctx.save();
+        ctx.globalAlpha = metricsFadeAlpha < 1 ? metricsFadeAlpha : 1;
+        ctx.drawImage(dataLayer, 0, 0, cssW, cssH);
+        ctx.restore();
+        ctx.restore(); // restore scale
+        return;
+      }
+
+      if (colsWithData.length >= 1) {
+        var areaPath = new Path2D();
+        if (drawHasLeadIn && drawLeadInVal !== null) {
+          areaPath.moveTo(pad.left, cssH - pad.bottom);
+          areaPath.lineTo(pad.left, toY(drawLeadInVal));
+        } else {
+          areaPath.moveTo(colCenterX(colsWithData[0]), cssH - pad.bottom);
         }
         for (var i = 0; i < colsWithData.length; i++) {
-          ctx.lineTo(colCenterX(colsWithData[i]), toY(colVals[colsWithData[i]]));
+          areaPath.lineTo(colCenterX(colsWithData[i]), toY(drawColVals[colsWithData[i]]));
         }
         var lastX = colCenterX(colsWithData[colsWithData.length - 1]);
-        ctx.lineTo(lastX, cssH - pad.bottom);
-        ctx.closePath();
-        ctx.fillStyle = "rgba(122, 86, 48, 0.07)";
-        ctx.fill();
+        areaPath.lineTo(lastX, cssH - pad.bottom);
+        areaPath.closePath();
+        dataCtx.save();
+        dataCtx.clip(areaPath);
+        var hatchCenterX = pad.left + plotW / 2;
+        var hatchCenterY = pad.top + plotH / 2;
+        dataCtx.translate(hatchCenterX, hatchCenterY);
+        dataCtx.rotate((130 * Math.PI) / 180);
+        dataCtx.translate(-hatchCenterX, -hatchCenterY);
+        dataCtx.strokeStyle = "rgba(74, 43, 20, 0.85)";
+        dataCtx.lineWidth = 0.2;
+        var hatchSpacing = 2;
+        var hatchExtent = cssW + cssH;
+        for (var hatch = -hatchExtent; hatch <= hatchExtent; hatch += hatchSpacing) {
+          dataCtx.beginPath();
+          dataCtx.moveTo(-hatchExtent, hatch);
+          dataCtx.lineTo(hatchExtent, hatch);
+          dataCtx.stroke();
+        }
+        dataCtx.restore();
       }
 
       // ---- Connecting line ----
       if (colsWithData.length >= 1) {
-        ctx.beginPath();
-        ctx.strokeStyle = "#5c3a28";
-        ctx.lineWidth = 1.2;
-        ctx.lineJoin = "round";
-        ctx.lineCap = "round";
+        dataCtx.beginPath();
+        dataCtx.strokeStyle = "#5c3a28";
+        dataCtx.lineWidth = 1.2;
+        dataCtx.lineJoin = "round";
+        dataCtx.lineCap = "round";
         // Start from lead-in at left edge if present
-        if (hasLeadIn && leadInVal !== null) {
-          ctx.moveTo(pad.left, toY(leadInVal));
+        if (drawHasLeadIn && drawLeadInVal !== null) {
+          dataCtx.moveTo(pad.left, toY(drawLeadInVal));
         }
         for (var i = 0; i < colsWithData.length; i++) {
           var cx = colCenterX(colsWithData[i]);
-          var cy = toY(colVals[colsWithData[i]]);
-          if (i === 0 && !(hasLeadIn && leadInVal !== null)) ctx.moveTo(cx, cy);
-          else ctx.lineTo(cx, cy);
+          var cy = toY(drawColVals[colsWithData[i]]);
+          if (i === 0 && !(drawHasLeadIn && drawLeadInVal !== null)) dataCtx.moveTo(cx, cy);
+          else dataCtx.lineTo(cx, cy);
         }
-        ctx.stroke();
+        dataCtx.stroke();
       }
 
       // ---- Data dots ----
       var dotColor = "rgba(122, 86, 48, 0.72)";
-      ctx.fillStyle = dotColor;
+      dataCtx.fillStyle = dotColor;
       for (var i = 0; i < colsWithData.length; i++) {
         var col = colsWithData[i];
-        ctx.beginPath();
-        ctx.arc(colCenterX(col), toY(colVals[col]), 2.2, 0, Math.PI * 2);
-        ctx.fill();
+        dataCtx.beginPath();
+        dataCtx.arc(colCenterX(col), toY(drawColVals[col]), 2.2, 0, Math.PI * 2);
+        dataCtx.fill();
       }
 
       // ---- Value labels above dots, center-aligned ----
       var valFont = '7px "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive';
-      ctx.font = valFont;
-      ctx.fillStyle = "rgba(74, 43, 20, 0.62)";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "bottom";
+      dataCtx.font = valFont;
+      dataCtx.fillStyle = "rgba(74, 43, 20, 0.62)";
+      dataCtx.textAlign = "center";
+      dataCtx.textBaseline = "bottom";
       for (var i = 0; i < colsWithData.length; i++) {
         var col = colsWithData[i];
         var vx = colCenterX(col);
-        var vy = toY(colVals[col]) - 4;
-        ctx.fillText(colVals[col].toFixed(2), vx, vy);
+        var vy = toY(drawColVals[col]) - 4;
+        dataCtx.fillText(drawColVals[col].toFixed(2), vx, vy);
       }
+      dataCtx.restore();
 
+      ctx.save();
+      ctx.globalAlpha = metricsFadeAlpha < 1 ? metricsFadeAlpha : 1;
+      ctx.drawImage(dataLayer, 0, 0, cssW, cssH);
       ctx.restore();
+
+      ctx.restore(); // restore scale
     }
 
     function draw(now = performance.now()) {
@@ -2783,6 +3529,24 @@
       return (state?.agents || []).find((agent) => String(agent.id) === String(id));
     }
 
+    async function fetchAgentMetrics(agentId) {
+      if (String(agentMetricsId) === String(agentId) && agentMetricsHistory) return agentMetricsHistory;
+      try {
+        const data = await fetchJson("/api/agent/metrics?id=" + encodeURIComponent(agentId));
+        agentMetricsHistory = {
+          hourly: normalizeMetricsHistory(data.hourly || data.metrics_history || [], sim ? sim.seconds_per_step : 1),
+          daily: normalizeMetricsHistory(data.daily || [], sim ? sim.seconds_per_step : 1),
+        };
+        agentMetricsId = agentId;
+        return agentMetricsHistory;
+      } catch (e) {
+        console.warn("Failed to fetch agent metrics:", e);
+        agentMetricsHistory = { hourly: [], daily: [] };
+        agentMetricsId = agentId;
+        return null;
+      }
+    }
+
     function agentView(agent) {
       const profile = agent.profile || {};
       const trait = agent.trait || {};
@@ -2793,6 +3557,8 @@
         name: profile.name || "",
         home: profile.home || "",
         origin_name: profile.origin_name || "",
+        workplace_name: profile.workplace_name || "",
+        workplace: profile.workplace || "",
         normal_meal_speed: Number(profile.normal_meal_speed || 1),
         normal_walk_speed: Number(profile.normal_walk_speed_cells_per_step || 1),
         phase: context.phase || "IDLE",
@@ -2813,11 +3579,18 @@
         action_phase: context.action_phase || "",
         remaining_action_seconds: Number(context.remaining_action_seconds || 0),
         reason: context.reason || "",
+        activity_history: context.activity_history || [],
         energy: clamp01(Number(state.energy || 0)),
         satiety: clamp01(Number(state.satiety || 0)),
         physical_health: clamp01(Number(trait.physical_health || 0)),
         mental_health: clamp01(Number(trait.mental_health || 0)),
         wellbeing: clamp01(Number(trait.wellbeing || 0)),
+        intrinsic_satisfaction: clamp01(Number(state.intrinsic_satisfaction || 0)),
+        extrinsic_satisfaction: clamp01(Number(state.extrinsic_satisfaction || 0)),
+        interests: trait.interests || {},
+        skills: trait.skills || {},
+        personality: trait.personality || {},
+        emotion: state.emotion || {},
       };
     }
 
@@ -3428,8 +4201,55 @@
     canvas.addEventListener("mouseleave", handleMapMouseLeave);
     canvas.addEventListener("click", (event) => {
       const agent = nearestAgent(event);
-      selectedId = agent ? agent.id : null;
-      updatePanel();
+      const newId = agent ? agent.id : null;
+      const changed = newId !== selectedId;
+      if (changed) {
+        captureMetricsFadeSnapshot();
+        startPanelAnimation(newId);
+      }
+      selectedId = newId;
+      if (!changed) {
+        draw();
+        return;
+      }
+      if (newId) {
+        // Determine current pursuit for activity bar highlight
+        var ctx = agent.context || {};
+        var phase = (ctx.phase || "").toLowerCase();
+        var newPursuit = phase === "activity" ? ctx.current_action
+                       : phase === "moving" ? ctx.intention
+                       : null;
+        if (newPursuit !== pursuitsHighlightAction) {
+          pursuitsHighlightAlpha = 0;  // start fade-in from scratch
+        }
+        pursuitsHighlightAction = newPursuit;
+        // Start fade-out; keep old data visible during fade.
+        metricsKeepOldData = hasAgentMetricPayload();
+        metricsFadeReady = false;
+        metricsPendingClear = false;
+        metricsFadeState = 'fadingOut';
+        metricsFadeStart = performance.now();
+        updatePanel();
+        fetchAgentMetrics(newId).then(function() {
+          // Guard against stale fetch (user already switched to another agent)
+          if (String(agentMetricsId) !== String(selectedId)) return;
+          metricsFadeReady = true;
+          if (metricsFadeState === 'hidden') {
+            startMetricsFadeIn(performance.now());
+          }
+          // If still 'fadingOut', state machine picks up metricsFadeReady at transition
+          updatePanel();
+        });
+      } else {
+        // Deselect — fade out old agent data, clear at switch, fade in averages
+        pursuitsHighlightAction = null;
+        metricsKeepOldData = hasAgentMetricPayload();
+        metricsFadeReady = true;
+        metricsPendingClear = true;
+        metricsFadeState = 'fadingOut';
+        metricsFadeStart = performance.now();
+        updatePanel();
+      }
       draw();
     });
     window.addEventListener("resize", resize);

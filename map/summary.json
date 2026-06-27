@@ -40,6 +40,100 @@
     "coordinateSystem": "relative_grid_offset",
     "area": "cellCount"
   },
+  "georeference": {
+    "schemaVersion": 1,
+    "method": "equal_scale_similarity_least_squares",
+    "cellCoordinate": "cell_center",
+    "coordinateSystem": "relative_grid",
+    "projection": {
+      "type": "local_equirectangular",
+      "referenceLat": 40.15235025,
+      "referenceLon": 116.2643995,
+      "earthRadiusMeters": 6371000.0
+    },
+    "controlPoints": {
+      "topLeft": {
+        "row": 1,
+        "col": 6,
+        "lat": 40.154757,
+        "lon": 116.257059
+      },
+      "topRight": {
+        "row": 7,
+        "col": 339,
+        "lat": 40.157556,
+        "lon": 116.268131
+      },
+      "bottomLeft": {
+        "row": 307,
+        "col": 19,
+        "lat": 40.147151,
+        "lon": 116.260999
+      },
+      "bottomRight": {
+        "row": 307,
+        "col": 334,
+        "lat": 40.149937,
+        "lon": 116.271409
+      }
+    },
+    "fit": {
+      "scaleMetersPerCell": 2.973682549,
+      "rmsResidualMeters": 1.043925,
+      "maxResidualMeters": 1.172297,
+      "colBearingDegrees": 70.755349,
+      "rowBearingDegrees": 160.755349,
+      "controlPointResiduals": {
+        "topLeft": {
+          "inputLat": 40.154757,
+          "inputLon": 116.257059,
+          "fittedLat": 40.154765902,
+          "fittedLon": 116.2570516101,
+          "residualMeters": 1.172297
+        },
+        "topRight": {
+          "inputLat": 40.157556,
+          "inputLon": 116.268131,
+          "fittedLat": 40.1575496556,
+          "fittedLon": 116.2681209542,
+          "residualMeters": 1.107532
+        },
+        "bottomLeft": {
+          "inputLat": 40.147151,
+          "inputLon": 116.260999,
+          "fittedLat": 40.1471544296,
+          "fittedLon": 116.2610099442,
+          "residualMeters": 1.005285
+        },
+        "bottomRight": {
+          "inputLat": 40.149937,
+          "inputLon": 116.271409,
+          "fittedLat": 40.1499310128,
+          "fittedLon": 116.2714154915,
+          "residualMeters": 0.864644
+        }
+      }
+    },
+    "transform": {
+      "type": "grid_to_local_meters",
+      "xMeters": {
+        "intercept": -642.3216573594575,
+        "col": 2.8075125601760074,
+        "row": 0.9801332193506704
+      },
+      "yMeters": {
+        "intercept": 265.53495633086845,
+        "col": 0.9801332193506704,
+        "row": -2.8075125601760074
+      },
+      "formula": {
+        "xMeters": "xMeters.intercept + xMeters.col * gridCol + xMeters.row * gridRow",
+        "yMeters": "yMeters.intercept + yMeters.col * gridCol + yMeters.row * gridRow",
+        "lat": "referenceLat + degrees(yMeters / earthRadiusMeters)",
+        "lon": "referenceLon + degrees(xMeters / (earthRadiusMeters * cos(radians(referenceLat))))"
+      }
+    }
+  },
   "terrainCells": [
     {
       "row": 0,

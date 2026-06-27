@@ -1,12 +1,16 @@
 ﻿from __future__ import annotations
 
+import json
 import math
 import random
+import tempfile
 import unittest
+from pathlib import Path
 
 from abm.model.daily import StudentDailyModel
 from abm.agent.policy import RuleBasedStudentPolicy
 from abm.core.types import StudentProfile, StudentState, StudentTrait, StudentContext, parse_time_to_seconds
+from abm.visual_server import aggregate_metric_buckets
 from tests.helpers import make_profile, make_state, make_trait, make_variable
 
 
@@ -183,7 +187,7 @@ class RuleBasedStudentPolicyTest(unittest.TestCase):
         self.assertNotIn("policy_scores", agent)
         self.assertNotIn("status", agent)
 
-    def test_daily_model_snapshot_includes_average_metrics_and_social_network(self) -> None:
+    def test_daily_model_snapshot_includes_average_metrics_and_social_graph(self) -> None:
         model = StudentDailyModel(
             "map/summary.json",
             student_count=4,
@@ -209,19 +213,16 @@ class RuleBasedStudentPolicyTest(unittest.TestCase):
         for value in snapshot["average_metrics"].values():
             self.assertGreaterEqual(value, 0.0)
             self.assertLessEqual(value, 1.0)
-        self.assertEqual(snapshot["social_network"]["nodes"], [])
-        self.assertEqual(snapshot["social_network"]["edges"], [])
+        self.assertEqual(snapshot["social_graph"]["nodes"], [])
+        self.assertEqual(snapshot["social_graph"]["ties"], [])
 
         left, right = model.students[:2]
-        for student in (left, right):
-            student.context.phase = "ACTIVITY"
-            student.context.current_action = "social"
-            student.context.target_region_id = "test_social_region"
-        model.outer_mind.advance([left, right], 3600)
+        model.outer_mind.set_relationship(int(left.unique_id), int(right.unique_id), closeness=0.5)
+        model.outer_mind.set_relationship(int(right.unique_id), int(left.unique_id), closeness=0.5)
         snapshot = model.snapshot()
 
-        self.assertGreaterEqual(len(snapshot["social_network"]["nodes"]), 2)
-        self.assertGreaterEqual(len(snapshot["social_network"]["edges"]), 2)
+        self.assertGreaterEqual(len(snapshot["social_graph"]["nodes"]), 2)
+        self.assertEqual(len(snapshot["social_graph"]["ties"]), 1)
 
     def test_metrics_history_uses_simulation_elapsed_seconds(self) -> None:
         model = StudentDailyModel(
@@ -236,8 +237,76 @@ class RuleBasedStudentPolicyTest(unittest.TestCase):
         model.step()
 
         history = model.metrics_history()
-        self.assertEqual([sample["elapsed_seconds"] for sample in history], [300, 600])
-        self.assertTrue(all("ts" not in sample for sample in history))
+        samples = history["metrics_history"]
+        self.assertEqual([sample["elapsed_seconds"] for sample in samples], [300, 600])
+        self.assertTrue(all("ts" not in sample for sample in samples))
+
+    def test_per_agent_metrics_are_archived_as_hourly_buckets(self) -> None:
+        model = StudentDailyModel(
+            "map/summary.json",
+            student_count=2,
+            start_time="07:30:00",
+            seconds_per_step=1800,
+            rng=5,
+        )
+
+        for _ in range(4):
+            model.step()
+
+        agent = model.students[0]
+        hourly_archive = agent.metrics_hourly_archive
+        self.assertEqual([bucket["bucketIndex"] for bucket in hourly_archive], [0, 1])
+        self.assertEqual([bucket["count"] for bucket in hourly_archive], [1, 2])
+
+        hourly_rows = aggregate_metric_buckets(
+            list(hourly_archive),
+            bucket_seconds=3600,
+            current_elapsed=model.elapsed_seconds,
+        )
+        self.assertEqual([bucket["bucketIndex"] for bucket in hourly_rows], [0, 1])
+
+        daily_source = [
+            {
+                "elapsed_seconds": hour * 3600,
+                "count": 1,
+                "energy": 1.0,
+                "satiety": 1.0,
+                "physical_health": 1.0,
+                "mental_health": 1.0,
+                "wellbeing": 1.0,
+                "intrinsic_satisfaction": 1.0,
+                "extrinsic_satisfaction": 1.0,
+            }
+            for hour in range(25)
+        ]
+        daily_rows = aggregate_metric_buckets(
+            daily_source,
+            bucket_seconds=86400,
+            current_elapsed=25 * 3600,
+        )
+        self.assertEqual([bucket["bucketIndex"] for bucket in daily_rows], [0])
+        self.assertEqual(daily_rows[0]["count"], 24)
+
+    def test_checkpoint_stores_agent_metric_archive_without_raw_history(self) -> None:
+        model = StudentDailyModel(
+            "map/summary.json",
+            student_count=2,
+            start_time="07:30:00",
+            seconds_per_step=1800,
+            rng=5,
+        )
+        for _ in range(4):
+            model.step()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            checkpoint_path = Path(tmpdir) / "checkpoint.json"
+            model.save_checkpoint(checkpoint_path)
+            checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+
+        self.assertIn("metrics_history", checkpoint)
+        for agent in checkpoint["agents"]:
+            self.assertIn("metrics_hourly_archive", agent)
+            self.assertNotIn("metrics_history", agent)
 
     def test_agent_initialization_uses_reproducible_local_prng_seed(self) -> None:
         left = StudentDailyModel(

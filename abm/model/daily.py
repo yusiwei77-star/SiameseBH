@@ -186,7 +186,7 @@ class StudentDailyModel(Model):
 
     @property
     def day(self) -> int:
-        return self.current_second // SECONDS_PER_DAY
+        return self.current_second // SECONDS_PER_DAY + 1
 
     @property
     def current_time(self) -> str:
@@ -418,7 +418,10 @@ class StudentDailyModel(Model):
         self.outer_mind.advance(self.students, self.seconds_per_step)
         self.campus_steps += 1
         self.elapsed_seconds += self.seconds_per_step
-        # Record metrics snapshot for frontend history
+        # Record per-agent metrics snapshots for frontend display
+        for student in self.students:
+            student.record_metrics()
+        # Record population-average metrics snapshot for frontend history
         m = self.average_metrics()
         current_elapsed = self.elapsed_seconds
         self._metrics_history.append({

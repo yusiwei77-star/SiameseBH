@@ -28,6 +28,17 @@ if TYPE_CHECKING:
     from ..model.daily import StudentDailyModel
 
 
+METRIC_KEYS = (
+    "energy",
+    "satiety",
+    "physical_health",
+    "mental_health",
+    "wellbeing",
+    "intrinsic_satisfaction",
+    "extrinsic_satisfaction",
+)
+
+
 class DailyStudentAgent(Agent):
     """A student whose destinations are selected from needs, preferences, and time."""
 
@@ -47,6 +58,8 @@ class DailyStudentAgent(Agent):
         self.state = state
         self.context = context
         self.behavior_rng = rng
+        self.metrics_history: list[dict[str, object]] = []
+        self.metrics_hourly_archive: list[dict[str, object]] = []
 
     def step(self) -> None:
         self._update_activity_phase()
@@ -84,6 +97,7 @@ class DailyStudentAgent(Agent):
             else None
         )
         home_region = self.model.campus_map.regions_by_id.get(self.profile.home or "")
+        workplace_region = self.model.campus_map.regions_by_id.get(self.profile.workplace or "")
         return {
             "id": self.unique_id,
             "time": self.model.current_time,
@@ -96,6 +110,7 @@ class DailyStudentAgent(Agent):
                 "home": self.profile.home,
                 "origin_name": home_region.name if home_region else "",
                 "workplace": self.profile.workplace,
+                "workplace_name": workplace_region.name if workplace_region else "",
                 "normal_meal_speed": self.profile.normal_meal_speed,
                 "normal_walk_speed_cells_per_step": self.profile.normal_walk_speed_cells_per_step,
             },
@@ -136,6 +151,7 @@ class DailyStudentAgent(Agent):
                 "remaining_action_seconds": self.context.remaining_action_seconds,
                 "action_phase": self.context.action_phase,
                 "reason": self.context.last_decision_reason,
+                "activity_history": list(self.context.activity_history),
                 "path_length": len(self.context.path),
                 "reachable": bool(self.context.path),
                 "render_motion": self.render_motion(),
@@ -296,7 +312,7 @@ class DailyStudentAgent(Agent):
     def _start_activity(self, activity: str) -> None:
         self.context.phase = "ACTIVITY"
         self.context.current_action = activity
-        self.context.action_started_at = self.model.current_second
+        self.context.action_started_at = self.model.second_of_day
         if len(self.context.path) > 1:
             self.context.last_path = list(self.context.path)
         self.context.path = []
@@ -322,6 +338,27 @@ class DailyStudentAgent(Agent):
         self.context.last_decision_reason = self.context.last_decision_reason or f"start_{activity}"
 
     def _clear_activity(self, reason: str) -> None:
+        # Record completed activity in history before clearing fields
+        action = self.context.current_action
+        if action:
+            location = ""
+            region = self.model.campus_map.regions_by_id.get(self.context.target_region_id or "")
+            if region:
+                location = region.name
+            if not (
+                self.context.activity_history
+                and self.context.activity_history[0]["action"] == action
+                and self.context.activity_history[0]["location"] == location
+            ):
+                self.context.activity_history.insert(0, {
+                    "day": self.model.day,
+                    "started_at": self.context.action_started_at,
+                    "action": action,
+                    "location": location,
+                })
+                if len(self.context.activity_history) > 10:
+                    self.context.activity_history.pop()
+
         self.context.phase = "IDLE"
         self.context.current_action = None
         self.context.intention = None
@@ -340,6 +377,57 @@ class DailyStudentAgent(Agent):
         if self.context.phase != "ACTIVITY" or self.context.current_action != "eat":
             return
         self.context.action_phase = "eating"
+
+    def record_metrics(self) -> None:
+        """Record a per-agent metrics snapshot for frontend time-series display."""
+        current_elapsed = self.model.elapsed_seconds
+        self.metrics_history.append({
+            "step": self.model.campus_steps,
+            "elapsed_seconds": current_elapsed,
+            "energy": self.state.energy,
+            "satiety": self.state.satiety,
+            "physical_health": self.trait.physical_health,
+            "mental_health": self.trait.mental_health,
+            "wellbeing": self.trait.wellbeing,
+            "intrinsic_satisfaction": self.state.intrinsic_satisfaction,
+            "extrinsic_satisfaction": self.state.extrinsic_satisfaction,
+        })
+        self._archive_completed_metric_hours(current_elapsed)
+        # Raw samples are only needed until the current hour can be archived.
+        cutoff = (current_elapsed // 3600) * 3600
+        while self.metrics_history and self.metrics_history[0]["elapsed_seconds"] < cutoff:
+            self.metrics_history.pop(0)
+
+    def _archive_completed_metric_hours(self, current_elapsed: int) -> None:
+        current_hour = current_elapsed // 3600
+        prev_elapsed = current_elapsed - self.model.seconds_per_step
+        prev_hour = prev_elapsed // 3600
+        if prev_elapsed < 0 or current_hour <= prev_hour:
+            return
+
+        for hour_idx in range(prev_hour, current_hour):
+            if (
+                self.metrics_hourly_archive
+                and self.metrics_hourly_archive[-1].get("bucketIndex") == hour_idx
+            ):
+                continue
+            hour_start = hour_idx * 3600
+            hour_end = hour_start + 3600
+            hour_samples = [
+                sample for sample in self.metrics_history
+                if hour_start <= int(sample.get("elapsed_seconds", 0) or 0) < hour_end
+            ]
+            if not hour_samples:
+                continue
+            avg: dict[str, object] = {
+                "bucketIndex": hour_idx,
+                "elapsed_seconds": hour_start,
+                "count": len(hour_samples),
+                "step": hour_samples[-1].get("step"),
+            }
+            for key in METRIC_KEYS:
+                avg[key] = sum(float(sample.get(key, 0) or 0) for sample in hour_samples) / len(hour_samples)
+            self.metrics_hourly_archive.append(avg)
 
     def _clear_meal_fields(self) -> None:
         self.context.action_phase = None

@@ -5,7 +5,27 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from ..core.types import StudentProfile, StudentState, StudentTrait, StudentContext
+from ..core.types import SECONDS_PER_DAY, StudentProfile, StudentState, StudentTrait, StudentContext
+
+
+METRIC_KEYS = (
+    "energy",
+    "satiety",
+    "physical_health",
+    "mental_health",
+    "wellbeing",
+    "intrinsic_satisfaction",
+    "extrinsic_satisfaction",
+)
+
+
+def _legacy_action_started_at(raw: int | None) -> int | None:
+    """Convert old-format total-elapsed-seconds to second-of-day (0..86399)."""
+    if raw is None:
+        return None
+    if raw >= SECONDS_PER_DAY:
+        return raw % SECONDS_PER_DAY
+    return raw
 
 
 def normalize_metrics_history(
@@ -32,6 +52,38 @@ def normalize_metrics_history(
         normalized.append(item)
         last_elapsed = elapsed
     return normalized
+
+
+def hourly_archive_from_metrics_history(
+    history: list[dict[str, object]],
+    *,
+    current_elapsed: int,
+) -> list[dict[str, object]]:
+    """Build completed hourly metric buckets from raw samples."""
+    buckets: dict[int, list[dict[str, object]]] = {}
+    current_hour = current_elapsed // 3600
+    for sample in history:
+        elapsed = int(sample.get("elapsed_seconds", 0) or 0)
+        hour_idx = elapsed // 3600
+        if hour_idx >= current_hour:
+            continue
+        buckets.setdefault(hour_idx, []).append(sample)
+
+    archive: list[dict[str, object]] = []
+    for hour_idx in sorted(buckets):
+        samples = buckets[hour_idx]
+        if not samples:
+            continue
+        avg: dict[str, object] = {
+            "bucketIndex": hour_idx,
+            "elapsed_seconds": hour_idx * 3600,
+            "count": len(samples),
+            "step": samples[-1].get("step"),
+        }
+        for key in METRIC_KEYS:
+            avg[key] = sum(float(sample.get(key, 0) or 0) for sample in samples) / len(samples)
+        archive.append(avg)
+    return archive
 
 
 def save_model_checkpoint(model, path: str | Path) -> None:
@@ -110,7 +162,9 @@ def agent_checkpoint_data(agent) -> dict[str, object]:
             "last_decision_reason": v.last_decision_reason,
             "current_speed_cells_per_step": v.current_speed_cells_per_step,
             "movement_progress": v.movement_progress,
+            "activity_history": v.activity_history,
         },
+        "metrics_hourly_archive": agent.metrics_hourly_archive,
         "rng_state": list(rng.getstate()),
     }
 
@@ -185,13 +239,28 @@ def load_model_checkpoint(
             target_region_id=variable_data.get("target_region_id"),
             current_action=variable_data.get("current_action"),
             last_action=variable_data.get("last_action"),
-            action_started_at=variable_data.get("action_started_at"),
+            action_started_at=_legacy_action_started_at(variable_data.get("action_started_at")),
             remaining_action_seconds=int(variable_data.get("remaining_action_seconds", 0)),
             action_phase=variable_data.get("action_phase"),
         )
         agent.context.last_decision_reason = variable_data.get("last_decision_reason")
         agent.context.current_speed_cells_per_step = variable_data.get("current_speed_cells_per_step")
         agent.context.movement_progress = float(variable_data.get("movement_progress", 0))
+        agent.context.activity_history = list(variable_data.get("activity_history", []))
+        agent.metrics_hourly_archive = normalize_metrics_history(
+            cp.get("metrics_hourly_archive", []),
+            seconds_per_step=model.seconds_per_step,
+        )
+        if not agent.metrics_hourly_archive and cp.get("metrics_history"):
+            legacy_metrics_history = normalize_metrics_history(
+                cp.get("metrics_history", []),
+                seconds_per_step=model.seconds_per_step,
+            )
+            agent.metrics_hourly_archive = hourly_archive_from_metrics_history(
+                legacy_metrics_history,
+                current_elapsed=model.elapsed_seconds,
+            )
+        agent.metrics_history = []
         # Restore behavior RNG
         rng_state = cp["rng_state"]
         agent.behavior_rng.setstate((rng_state[0], tuple(rng_state[1]), rng_state[2]))
