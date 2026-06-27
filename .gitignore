@@ -13,12 +13,8 @@ __pycache__/
 .agents/
 .playwright-cli/
 
-# Debug logs
-debug/*.log
-debug/*.out.log
-debug/*.err.log
-debug/*.pid
-debug/*.json
+# Debug
+debug/
 
 # OS
 .DS_Store
