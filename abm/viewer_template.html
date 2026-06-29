@@ -773,6 +773,7 @@
     const agentPathKeyCache = new Map();
     let stateRequestEpoch = 0;
     let controlInFlight = false;
+    let visibilitySyncInFlight = false;
     const RESET_ANIMATION_SPEED_MULTIPLIER = 3.0;
     const AVERAGE_METRIC_DEFS = [
       { key: "energy", label: "energy" },
@@ -988,7 +989,7 @@
     }
 
     async function refreshState() {
-      if (controlInFlight) return;
+      if (controlInFlight || visibilitySyncInFlight) return;
       const requestEpoch = stateRequestEpoch;
       try {
         let nextSim = await fetchJson("/api/state");
@@ -1038,6 +1039,43 @@
       }
     }
 
+    async function syncStateAfterVisibilityRestore() {
+      if (document.hidden || controlInFlight || visibilitySyncInFlight) return;
+      const requestEpoch = ++stateRequestEpoch;
+      visibilitySyncInFlight = true;
+      try {
+        let nextSim = await fetchJson("/api/state");
+        if (stateNeedsPaths(nextSim)) {
+          nextSim = await fetchJson("/api/state?paths=1");
+        }
+        if (document.hidden || controlInFlight || requestEpoch !== stateRequestEpoch) return;
+        stateFetchError = null;
+        simReceivedAt = performance.now();
+        updateAgentPathCache(nextSim);
+        resetAgentAnimations(nextSim);
+        sim = nextSim;
+        window.__sim = sim;
+        window.__simReceivedAt = simReceivedAt;
+        appendMetricsSnapshot(sim);
+        if (selectedId && !findAgent(selectedId)) {
+          captureMetricsFadeSnapshot();
+          startPanelAnimation(null);
+          selectedId = null;
+          pursuitsHighlightAction = null;
+          metricsFadeReady = true;
+          metricsPendingClear = true;
+          metricsFadeState = 'fadingOut';
+          metricsFadeStart = performance.now();
+        }
+        updatePanel();
+        draw();
+      } catch (error) {
+        stateFetchError = error instanceof Error ? error.message : String(error);
+      } finally {
+        visibilitySyncInFlight = false;
+      }
+    }
+
     async function control(action, value = undefined) {
       const requestEpoch = ++stateRequestEpoch;
       controlInFlight = true;
@@ -1084,6 +1122,9 @@
         const index = PLAYBACK_SPEEDS.findIndex((speed) => Number(speed) === current);
         const nextSpeed = PLAYBACK_SPEEDS[(index + 1) % PLAYBACK_SPEEDS.length];
         control("speed", nextSpeed);
+      });
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) syncStateAfterVisibilityRestore();
       });
       bindLayerControls();
       bindSubmapControls();
