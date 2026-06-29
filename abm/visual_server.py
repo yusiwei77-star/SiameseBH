@@ -1,4 +1,4 @@
-﻿"""Realtime ABM visualization server.
+"""Realtime ABM visualization server.
 
 Run:
     python -m abm.visual_server
@@ -11,6 +11,7 @@ import json
 import os
 import signal
 import time
+from datetime import datetime, timezone
 from dataclasses import dataclass
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -20,6 +21,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from .model.daily import StudentDailyModel
+from .output import RunOutputManager, make_run_id
 
 
 DEFAULT_HOST = "127.0.0.1"
@@ -83,6 +85,32 @@ def aggregate_metric_buckets(
     return rows[-(limit + 1):] if need_lead_in else rows[-limit:]
 
 
+def latest_hourly_rows(
+    source: list[dict[str, object]],
+    *,
+    current_elapsed: int,
+    limit: int = METRICS_BUCKET_LIMIT,
+) -> list[dict[str, object]]:
+    current_bucket = current_elapsed // 3600
+    rows = [
+        dict(row)
+        for row in source
+        if int(row.get("bucketIndex", int(row.get("elapsed_seconds", 0) or 0) // 3600)) < current_bucket
+    ]
+    return rows[-(limit + 1):] if len(rows) > limit else rows[-limit:]
+
+
+def recent_daily_source(
+    hourly_archive: list[dict[str, object]],
+    *,
+    limit: int = METRICS_BUCKET_LIMIT,
+) -> list[dict[str, object]]:
+    # Enough completed-hour rows for the 12 visible days plus one lead-in day,
+    # with one extra day because the current day is excluded after aggregation.
+    max_hours = (limit + 2) * 24
+    return list(hourly_archive[-max_hours:])
+
+
 @dataclass(frozen=True)
 class ModelConfig:
     summary_path: Path
@@ -90,19 +118,36 @@ class ModelConfig:
     male_count: int | None
     start_time: str
     seconds_per_step: int
+    run_name: str | None = None
+
+
+def make_unique_run_dir(config: ModelConfig) -> Path:
+    base = Path("runs") / make_run_id(config.students, config.start_time, run_name=config.run_name)
+    if not base.exists():
+        return base
+    index = 2
+    while True:
+        candidate = base.with_name(f"{base.name}_{index}")
+        if not candidate.exists():
+            return candidate
+        index += 1
 
 
 class VisualRuntime:
-    def __init__(self, config: ModelConfig, checkpoint_path: Path | None = None) -> None:
+    def __init__(self, config: ModelConfig, run_dir: Path) -> None:
         self.config = config
-        self.checkpoint_path = checkpoint_path
+        self.run_dir = run_dir
+        self.checkpoint_path = run_dir / "checkpoint.json"
         self.summary = self._load_summary()
-        self.model = self._new_model(resume_from_checkpoint=True)
+        resume_ok = self.checkpoint_path.exists()
+        self.model = self._new_model(resume_from_checkpoint=resume_ok)
         self.lock = Lock()
         self.playing = False
         self.speed = 1.0
         self.last_wall = time.monotonic()
         self._stop_event = Event()
+        self.output = RunOutputManager(self.run_dir, self.model)
+        self.model.set_output(self.output)
         self._worker = Thread(target=self._background_loop, name="abm-simulation-worker", daemon=True)
         self._worker.start()
 
@@ -133,12 +178,34 @@ class VisualRuntime:
             return
         self.model.save_checkpoint(self.checkpoint_path)
 
+    def _finish_current_output(self, *, reason: str) -> None:
+        meta = {
+            "ended_at": datetime.now(timezone.utc).isoformat(),
+            "ended_reason": reason,
+            "result": {
+                "total_steps": self.model.campus_steps,
+                "simulated_days": self.model.day,
+                "elapsed_seconds": self.model.elapsed_seconds,
+                "final_time": self.model.current_time,
+            },
+        }
+        self.output.shutdown(meta)
+
+    def _start_fresh_run(self) -> None:
+        self.run_dir = make_unique_run_dir(self.config)
+        self.checkpoint_path = self.run_dir / "checkpoint.json"
+        self.model = self._new_model(resume_from_checkpoint=False)
+        self.output = RunOutputManager(self.run_dir, self.model)
+        self.model.set_output(self.output)
+        self.save_checkpoint()
+
     def shutdown(self) -> None:
         self._stop_event.set()
         self._worker.join(timeout=5)
-        if self.checkpoint_path:
-            with self.lock:
+        with self.lock:
+            if self.checkpoint_path:
                 self.save_checkpoint()
+            self._finish_current_output(reason="shutdown")
 
     def state(self, *, include_all_paths: bool = False) -> dict[str, Any]:
         with self.lock:
@@ -156,10 +223,14 @@ class VisualRuntime:
                 self.model.step()
                 self.last_wall = time.monotonic()
             elif action == "reset":
-                self.model = self._new_model(resume_from_checkpoint=False)
+                old_run_dir = self.run_dir
+                if self.checkpoint_path:
+                    self.save_checkpoint()
+                self._finish_current_output(reason="reset")
+                self._start_fresh_run()
+                print(f"Reset started new run: {old_run_dir} -> {self.run_dir}")
                 self.playing = False
                 self.last_wall = time.monotonic()
-                self.save_checkpoint()
             elif action == "speed":
                 value = float(payload.get("value", self.speed))
                 if value <= 0:
@@ -180,15 +251,16 @@ class VisualRuntime:
                 if int(student.unique_id) == agent_id:
                     current_elapsed = int(self.model.elapsed_seconds)
                     hourly_source = getattr(student, "metrics_hourly_archive", [])
-                    if not hourly_source:
-                        hourly_source = getattr(student, "metrics_history", [])
-                    hourly = aggregate_metric_buckets(
-                        list(hourly_source),
-                        bucket_seconds=3600,
-                        current_elapsed=current_elapsed,
-                    )
+                    if hourly_source:
+                        hourly = latest_hourly_rows(list(hourly_source), current_elapsed=current_elapsed)
+                    else:
+                        hourly = aggregate_metric_buckets(
+                            list(getattr(student, "metrics_history", [])),
+                            bucket_seconds=3600,
+                            current_elapsed=current_elapsed,
+                        )
                     daily = aggregate_metric_buckets(
-                        list(getattr(student, "metrics_hourly_archive", [])),
+                        recent_daily_source(list(getattr(student, "metrics_hourly_archive", []))),
                         bucket_seconds=86400,
                         current_elapsed=current_elapsed,
                     )
@@ -348,13 +420,12 @@ def main() -> None:
     parser.add_argument("--start-time", default="07:00:00", help="Simulation start time, HH:MM or HH:MM:SS.")
     parser.add_argument("--seconds-per-step", type=int, default=1, help="Simulated seconds per step.")
     parser.add_argument("--viewer-out", type=Path, default=None, help="Optionally write a copy of the viewer HTML.")
-    parser.add_argument("--resume", action="store_true", help="Resume from checkpoint if available.")
-    parser.add_argument("--checkpoint", type=Path, default=Path(".checkpoint.json"), help="Checkpoint file path.")
+    parser.add_argument("--run-name", default=None, help="Optional custom name for the run folder.")
+    parser.add_argument(
+        "--resume", type=Path, default=None,
+        help="Resume from a run folder (e.g. runs/2026-06-27_14-30-05_n100_t070000/).",
+    )
     args = parser.parse_args()
-
-    checkpoint_path = args.checkpoint if args.resume else None
-    if args.resume and not checkpoint_path.exists():
-        print(f"Warning: --resume set but checkpoint not found at {checkpoint_path}, starting fresh.")
 
     config = ModelConfig(
         summary_path=args.summary,
@@ -362,17 +433,34 @@ def main() -> None:
         male_count=args.male_count,
         start_time=args.start_time,
         seconds_per_step=args.seconds_per_step,
+        run_name=args.run_name,
     )
-    runtime = VisualRuntime(config, checkpoint_path=checkpoint_path)
+
+    # Determine run directory
+    if args.resume:
+        resume_path = Path(args.resume)
+        if resume_path.is_dir():
+            run_dir = resume_path
+        else:
+            run_dir = resume_path.parent
+        checkpoint_path = run_dir / "checkpoint.json"
+        if not checkpoint_path.exists():
+            print(f"Warning: --resume set but checkpoint not found at {checkpoint_path}, starting fresh.")
+            # Still use the same run_dir for continuity
+        print(f"Resuming run: {run_dir}")
+    else:
+        run_dir = make_unique_run_dir(config)
+        print(f"Starting new run: {run_dir}")
+
+    runtime = VisualRuntime(config, run_dir=run_dir)
     if args.viewer_out:
         write_viewer_template(args.viewer_out)
 
-    # Graceful shutdown: save checkpoint on Ctrl+C
+    # Graceful shutdown: save checkpoint and finalize output on Ctrl+C
     def _shutdown(signum, frame):
         print(f"\nShutting down...")
         runtime.shutdown()
-        if runtime.checkpoint_path:
-            print(f"Checkpoint saved to {runtime.checkpoint_path}")
+        print(f"Run data saved to {runtime.run_dir}")
         os._exit(0)
 
     signal.signal(signal.SIGINT, _shutdown)
@@ -384,8 +472,7 @@ def main() -> None:
     })
     server = ThreadingHTTPServer((args.host, args.port), handler)
     print(f"ABM viewer: http://{args.host}:{args.port}/")
-    if runtime.checkpoint_path:
-        print(f"Checkpoint: {runtime.checkpoint_path}  (auto-save every 100 steps)")
+    print(f"Checkpoint: {runtime.checkpoint_path}  (auto-save every 100 steps)")
     print(f"Viewer HTML served from {VIEWER_TEMPLATE}")
     if args.viewer_out:
         print(f"Viewer HTML copy written to {args.viewer_out}")

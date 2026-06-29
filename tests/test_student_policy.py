@@ -8,9 +8,10 @@ import unittest
 from pathlib import Path
 
 from abm.model.daily import StudentDailyModel
+from abm.model.checkpoint import CHECKPOINT_HOURLY_ARCHIVE_LIMIT
 from abm.agent.policy import RuleBasedStudentPolicy
 from abm.core.types import StudentProfile, StudentState, StudentTrait, StudentContext, parse_time_to_seconds
-from abm.visual_server import aggregate_metric_buckets
+from abm.visual_server import aggregate_metric_buckets, latest_hourly_rows, recent_daily_source
 from tests.helpers import make_profile, make_state, make_trait, make_variable
 
 
@@ -287,6 +288,24 @@ class RuleBasedStudentPolicyTest(unittest.TestCase):
         self.assertEqual([bucket["bucketIndex"] for bucket in daily_rows], [0])
         self.assertEqual(daily_rows[0]["count"], 24)
 
+        long_hourly = [
+            {
+                "bucketIndex": hour,
+                "elapsed_seconds": hour * 3600,
+                "count": 1,
+                "energy": 1.0,
+                "satiety": 1.0,
+                "physical_health": 1.0,
+                "mental_health": 1.0,
+                "wellbeing": 1.0,
+                "intrinsic_satisfaction": 1.0,
+                "extrinsic_satisfaction": 1.0,
+            }
+            for hour in range(1000)
+        ]
+        self.assertEqual(len(latest_hourly_rows(long_hourly, current_elapsed=1000 * 3600)), 13)
+        self.assertLessEqual(len(recent_daily_source(long_hourly)), 14 * 24)
+
     def test_checkpoint_stores_agent_metric_archive_without_raw_history(self) -> None:
         model = StudentDailyModel(
             "map/summary.json",
@@ -307,6 +326,73 @@ class RuleBasedStudentPolicyTest(unittest.TestCase):
         for agent in checkpoint["agents"]:
             self.assertIn("metrics_hourly_archive", agent)
             self.assertNotIn("metrics_history", agent)
+
+    def test_checkpoint_limits_agent_activity_history(self) -> None:
+        model = StudentDailyModel(
+            "map/summary.json",
+            student_count=2,
+            start_time="07:30:00",
+            seconds_per_step=1800,
+            rng=5,
+        )
+        agent = model.students[0]
+        agent.context.activity_history = [
+            {"day": 1, "action": "study", "location": f"room_{i}"}
+            for i in range(25)
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            checkpoint_path = Path(tmpdir) / "checkpoint.json"
+            model.save_checkpoint(checkpoint_path)
+            checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+            restored = StudentDailyModel.from_checkpoint(checkpoint_path, summary_path="map/summary.json")
+
+        saved_history = checkpoint["agents"][0]["context"]["activity_history"]
+        self.assertEqual(len(saved_history), 10)
+        self.assertEqual(len(restored.students[0].context.activity_history), 10)
+
+    def test_checkpoint_limits_hourly_metric_archives(self) -> None:
+        model = StudentDailyModel(
+            "map/summary.json",
+            student_count=2,
+            start_time="07:30:00",
+            seconds_per_step=1800,
+            rng=5,
+        )
+        long_archive = [
+            {
+                "bucketIndex": hour,
+                "elapsed_seconds": hour * 3600,
+                "count": 1,
+                "energy": 1.0,
+                "satiety": 1.0,
+                "physical_health": 1.0,
+                "mental_health": 1.0,
+                "wellbeing": 1.0,
+                "intrinsic_satisfaction": 1.0,
+                "extrinsic_satisfaction": 1.0,
+            }
+            for hour in range(CHECKPOINT_HOURLY_ARCHIVE_LIMIT + 25)
+        ]
+        model._hourly_archive = list(long_archive)
+        for agent in model.students:
+            agent.metrics_hourly_archive = list(long_archive)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            checkpoint_path = Path(tmpdir) / "checkpoint.json"
+            model.save_checkpoint(checkpoint_path)
+            checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+            restored = StudentDailyModel.from_checkpoint(checkpoint_path, summary_path="map/summary.json")
+
+        first_kept = 25
+        self.assertEqual(len(checkpoint["hourly_archive"]), CHECKPOINT_HOURLY_ARCHIVE_LIMIT)
+        self.assertEqual(checkpoint["hourly_archive"][0]["bucketIndex"], first_kept)
+        for agent in checkpoint["agents"]:
+            archive = agent["metrics_hourly_archive"]
+            self.assertEqual(len(archive), CHECKPOINT_HOURLY_ARCHIVE_LIMIT)
+            self.assertEqual(archive[0]["bucketIndex"], first_kept)
+        self.assertEqual(len(restored._hourly_archive), CHECKPOINT_HOURLY_ARCHIVE_LIMIT)
+        self.assertEqual(len(restored.students[0].metrics_hourly_archive), CHECKPOINT_HOURLY_ARCHIVE_LIMIT)
 
     def test_agent_initialization_uses_reproducible_local_prng_seed(self) -> None:
         left = StudentDailyModel(

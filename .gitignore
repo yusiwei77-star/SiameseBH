@@ -1,5 +1,5 @@
-# Checkpoint (large, auto-generated)
-.checkpoint.json
+# Run output (large, auto-generated)
+runs/
 
 # Python
 __pycache__/

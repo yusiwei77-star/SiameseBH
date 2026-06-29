@@ -1,4 +1,4 @@
-﻿"""Schedule-free daily student behavior model."""
+"""Schedule-free daily student behavior model."""
 
 from __future__ import annotations
 
@@ -61,6 +61,7 @@ class StudentDailyModel(Model):
         self._attendance_day = self.day
         self._metrics_history: list[dict[str, object]] = []
         self._hourly_archive: list[dict[str, object]] = []
+        self._output: object = None  # RunOutputManager | None, set via set_output()
 
         dormitories = self._available_regions_by_function("dormitory")
         if not dormitories:
@@ -349,6 +350,10 @@ class StudentDailyModel(Model):
         """Save minimal model state as JSON so the simulation can be resumed later."""
         save_model_checkpoint(self, path)
 
+    def set_output(self, output: object) -> None:
+        """Attach a RunOutputManager for archival JSONL writes."""
+        self._output = output
+
     @classmethod
     def from_checkpoint(
         cls,
@@ -440,6 +445,7 @@ class StudentDailyModel(Model):
         current_hour = current_elapsed // 3600
         prev_elapsed = current_elapsed - self.seconds_per_step
         prev_hour = prev_elapsed // 3600
+        completed_hours: list[dict[str, object]] = []
         if prev_elapsed >= 0 and current_hour > prev_hour:
             for hour_idx in range(prev_hour, current_hour):
                 hour_start = hour_idx * 3600
@@ -460,6 +466,29 @@ class StudentDailyModel(Model):
                     avg[key] = sum(s[key] for s in hour_samples) / len(hour_samples)
                 if not self._hourly_archive or self._hourly_archive[-1].get("bucketIndex") != hour_idx:
                     self._hourly_archive.append(avg)
+                completed_hours.append(avg)
+
+        # --- Output: hourly JSONL writes ---
+        if self._output is not None:
+            from ..output import RunOutputManager  # noqa: F811 - avoid circular import
+            out: RunOutputManager = self._output  # type: ignore[assignment]
+            for avg in completed_hours:
+                hour_idx = int(avg["bucketIndex"])
+                elapsed = int(avg["elapsed_seconds"])
+                out.write_population_hour(hour_idx, elapsed, avg)
+                out.write_social_graph_hour(hour_idx, elapsed)
+                for student in self.students:
+                    archive = getattr(student, "metrics_hourly_archive", [])
+                    if archive and archive[-1].get("bucketIndex") == hour_idx:
+                        out.write_agent_metrics_hour(student, hour_idx, archive[-1])
+
+            # --- Day boundary detection ---
+            prev_second = (self.start_second + prev_elapsed) % (24 * 3600)
+            curr_second = self.second_of_day
+            prev_day = (self.start_second + prev_elapsed) // (24 * 3600) + 1
+            curr_day = self.day
+            if prev_elapsed >= 0 and curr_day > prev_day:
+                out.on_day_changed(curr_day)
 
         # Trim _metrics_history: keep only the last 13 hours
         max_keep_seconds = 13 * 3600

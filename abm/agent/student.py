@@ -37,6 +37,7 @@ METRIC_KEYS = (
     "intrinsic_satisfaction",
     "extrinsic_satisfaction",
 )
+ACTIVITY_HISTORY_LIMIT = 10
 
 
 class DailyStudentAgent(Agent):
@@ -151,7 +152,7 @@ class DailyStudentAgent(Agent):
                 "remaining_action_seconds": self.context.remaining_action_seconds,
                 "action_phase": self.context.action_phase,
                 "reason": self.context.last_decision_reason,
-                "activity_history": list(self.context.activity_history),
+                "activity_history": list(self.context.activity_history[:ACTIVITY_HISTORY_LIMIT]),
                 "path_length": len(self.context.path),
                 "reachable": bool(self.context.path),
                 "render_motion": self.render_motion(),
@@ -341,6 +342,9 @@ class DailyStudentAgent(Agent):
         # Record completed activity in history before clearing fields
         action = self.context.current_action
         if action:
+            started_at = self.context.action_started_at or 0
+            ended_at = self.model.second_of_day
+            duration_seconds = ended_at - started_at
             location = ""
             region = self.model.campus_map.regions_by_id.get(self.context.target_region_id or "")
             if region:
@@ -352,12 +356,22 @@ class DailyStudentAgent(Agent):
             ):
                 self.context.activity_history.insert(0, {
                     "day": self.model.day,
-                    "started_at": self.context.action_started_at,
+                    "started_at": started_at,
+                    "ended_at": ended_at,
+                    "duration_seconds": duration_seconds,
                     "action": action,
                     "location": location,
                 })
-                if len(self.context.activity_history) > 10:
-                    self.context.activity_history.pop()
+                del self.context.activity_history[ACTIVITY_HISTORY_LIMIT:]
+            # Notify output manager for archival JSONL
+            output = getattr(self.model, "_output", None)
+            if output is not None:
+                output.write_agent_activity(
+                    self, action, location,
+                    started_at=started_at,
+                    ended_at=ended_at,
+                    duration_seconds=duration_seconds,
+                )
 
         self.context.phase = "IDLE"
         self.context.current_action = None

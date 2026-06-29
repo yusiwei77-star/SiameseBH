@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from ..agent.student import ACTIVITY_HISTORY_LIMIT
 from ..core.types import SECONDS_PER_DAY, StudentProfile, StudentState, StudentTrait, StudentContext
 
 
@@ -17,6 +18,8 @@ METRIC_KEYS = (
     "intrinsic_satisfaction",
     "extrinsic_satisfaction",
 )
+CHECKPOINT_HOURLY_ARCHIVE_DAYS = 14
+CHECKPOINT_HOURLY_ARCHIVE_LIMIT = CHECKPOINT_HOURLY_ARCHIVE_DAYS * 24
 
 
 def _legacy_action_started_at(raw: int | None) -> int | None:
@@ -86,6 +89,19 @@ def hourly_archive_from_metrics_history(
     return archive
 
 
+def trim_hourly_archive(
+    archive: list[dict[str, object]],
+    *,
+    limit: int = CHECKPOINT_HOURLY_ARCHIVE_LIMIT,
+) -> list[dict[str, object]]:
+    """Keep only the recent hourly buckets needed for resumed frontend trends."""
+    if limit <= 0:
+        return []
+    if len(archive) <= limit:
+        return list(archive)
+    return list(archive[-limit:])
+
+
 def save_model_checkpoint(model, path: str | Path) -> None:
     """Save minimal model state as JSON so the simulation can be resumed later."""
     data: dict[str, object] = {
@@ -96,7 +112,7 @@ def save_model_checkpoint(model, path: str | Path) -> None:
         "student_count": len(model.students),
         "agents": [agent_checkpoint_data(s) for s in model.students],
         "metrics_history": model._metrics_history,
-        "hourly_archive": model._hourly_archive,
+        "hourly_archive": trim_hourly_archive(model._hourly_archive),
         "slot_attended_today": [list(pair) for pair in model._slot_attended_today],
         "attendance_day": model._attendance_day,
         "outer_mind_relationships": [
@@ -162,9 +178,9 @@ def agent_checkpoint_data(agent) -> dict[str, object]:
             "last_decision_reason": v.last_decision_reason,
             "current_speed_cells_per_step": v.current_speed_cells_per_step,
             "movement_progress": v.movement_progress,
-            "activity_history": v.activity_history,
+            "activity_history": list(v.activity_history[:ACTIVITY_HISTORY_LIMIT]),
         },
-        "metrics_hourly_archive": agent.metrics_hourly_archive,
+        "metrics_hourly_archive": trim_hourly_archive(agent.metrics_hourly_archive),
         "rng_state": list(rng.getstate()),
     }
 
@@ -246,19 +262,25 @@ def load_model_checkpoint(
         agent.context.last_decision_reason = variable_data.get("last_decision_reason")
         agent.context.current_speed_cells_per_step = variable_data.get("current_speed_cells_per_step")
         agent.context.movement_progress = float(variable_data.get("movement_progress", 0))
-        agent.context.activity_history = list(variable_data.get("activity_history", []))
-        agent.metrics_hourly_archive = normalize_metrics_history(
-            cp.get("metrics_hourly_archive", []),
-            seconds_per_step=model.seconds_per_step,
+        agent.context.activity_history = list(
+            variable_data.get("activity_history", [])[:ACTIVITY_HISTORY_LIMIT]
+        )
+        agent.metrics_hourly_archive = trim_hourly_archive(
+            normalize_metrics_history(
+                cp.get("metrics_hourly_archive", []),
+                seconds_per_step=model.seconds_per_step,
+            )
         )
         if not agent.metrics_hourly_archive and cp.get("metrics_history"):
             legacy_metrics_history = normalize_metrics_history(
                 cp.get("metrics_history", []),
                 seconds_per_step=model.seconds_per_step,
             )
-            agent.metrics_hourly_archive = hourly_archive_from_metrics_history(
-                legacy_metrics_history,
-                current_elapsed=model.elapsed_seconds,
+            agent.metrics_hourly_archive = trim_hourly_archive(
+                hourly_archive_from_metrics_history(
+                    legacy_metrics_history,
+                    current_elapsed=model.elapsed_seconds,
+                )
             )
         agent.metrics_history = []
         # Restore behavior RNG
@@ -272,9 +294,11 @@ def load_model_checkpoint(
         data.get("metrics_history", []),
         seconds_per_step=model.seconds_per_step,
     )
-    model._hourly_archive = normalize_metrics_history(
-        data.get("hourly_archive", []),
-        seconds_per_step=model.seconds_per_step,
+    model._hourly_archive = trim_hourly_archive(
+        normalize_metrics_history(
+            data.get("hourly_archive", []),
+            seconds_per_step=model.seconds_per_step,
+        )
     )
     model._slot_attended_today = {tuple(pair) for pair in data.get("slot_attended_today", [])}
     model._attendance_day = int(data.get("attendance_day", model.day))
