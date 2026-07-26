@@ -4,11 +4,22 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>The BH-S Marauder's Map</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kalam&amp;display=swap" rel="stylesheet">
   <style>
+    @font-face {
+      font-family: "SiameseBH MV Boli";
+      src: local("MV Boli"), url("/assets/fonts/mvboli.ttf") format("truetype");
+      font-weight: 400;
+      font-style: normal;
+      font-display: block;
+    }
     :root {
       --bg: #ffffff;
       --panel: rgba(10, 10, 10, 0.28);
       --side-panel-width: 340px;
+      --handwritten-font: "SiameseBH MV Boli", "Kalam", cursive;
       --text: #f0ede6;
       --muted: #b0b4a8;
       --line: rgba(255, 255, 255, 0.06);
@@ -17,6 +28,11 @@
       --selected: #f8fafc;
     }
     * { box-sizing: border-box; }
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+    }
     body {
       margin: 0;
       overflow: hidden;
@@ -26,8 +42,9 @@
     }
     .app {
       position: relative;
-      width: 100vw;
+      width: 100%;
       height: 100vh;
+      height: 100dvh;
       overflow: hidden;
     }
     .app:not([data-panels-ready="true"]) aside {
@@ -49,7 +66,7 @@
       border-right: 0;
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
-      font-family: "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive;
+      font-family: var(--handwritten-font);
       font-size: 12px;
     }
     .left-panel {
@@ -236,7 +253,7 @@
       transform: translateX(-50%);
       font-size: 9px;
       color: rgba(74, 43, 20, 0.62);
-      font-family: "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive;
+      font-family: var(--handwritten-font);
       pointer-events: none;
     }
     .social-graph {
@@ -366,14 +383,14 @@
       box-shadow: inset 0 0 0 1px rgba(255, 241, 190, 0.18);
       cursor: pointer;
       color: #3b2412;
-      font-family: "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive;
+      font-family: var(--handwritten-font);
       font-size: 10px;
       font-weight: bold;
       line-height: 1;
     }
     .layer-row input[type="checkbox"]:checked::after {
       content: "\2713";
-      transform: translateY(-0.5px);
+      transform: translateY(-1px);
     }
     .layer-row input[type="checkbox"]:focus-visible {
       outline: 2px solid rgba(74, 43, 20, 0.35);
@@ -660,6 +677,11 @@
   </div>
   <script>
     const CELL = 8;
+    // Canonical pre-redesign Windows composition. With the 2736x2504 map and
+    // two 340px panels this produces a 1.8906:1 parchment sheet, matching the
+    // original viewer geometry independently of viewport size and platform.
+    const PANEL_DESIGN_HEIGHT = 852;
+    const HANDWRITING_FONT = '"SiameseBH MV Boli", "Kalam", cursive';
     const agentColors = {
       base: "#3b2412",
       glow: "#6b2f1a",
@@ -709,6 +731,8 @@
     const rightPanel = document.querySelector(".right-panel");
     const view = { scale: 1, offsetX: 0, offsetY: 0, dragging: false, lastX: 0, lastY: 0 };
     let panelBaseScale = null;
+    let viewUsesAutoFit = true;
+    let lastViewportSize = null;
     let summary = null;
     let sim = null;
     let baseCanvas = null;
@@ -959,6 +983,22 @@
 
     async function init() {
       metricsViewMode = "hourly";
+      if (document.fonts?.load) {
+        // Preload both fonts before measuring or drawing text. Loading them in
+        // parallel keeps Kalam ready even when the primary asset is unavailable.
+        const fontLoads = await Promise.allSettled([
+          document.fonts.load('12px "SiameseBH MV Boli"'),
+          document.fonts.load('12px "Kalam"'),
+        ]);
+        try {
+          await document.fonts.ready;
+          if (fontLoads.some((result) => result.status === "rejected")) {
+            console.warn("A handwriting font could not be loaded; using the next fallback.");
+          }
+        } catch (error) {
+          console.warn("Handwriting fonts could not be loaded; using the next fallback.", error);
+        }
+      }
       summary = await fetchJson("/api/summary");
       sim = await fetchJson("/api/state");
       const metricsSnapshot = await fetchJson("/api/metrics_history");
@@ -1804,21 +1844,46 @@
       }
     }
 
+    function panelLayoutWidth(panel) {
+      if (!panel || getComputedStyle(panel).display === "none") return 0;
+      return panel.offsetWidth;
+    }
+
+    function fitSceneToViewport(rect) {
+      if (!summary) return;
+      const worldW = summary.size.cols * CELL;
+      const worldH = summary.size.rows * CELL;
+      const leftWidth = panelLayoutWidth(leftPanel);
+      const rightWidth = panelLayoutWidth(rightPanel);
+      const margin = Math.max(12, Math.min(32, Math.min(rect.width, rect.height) * 0.025));
+      panelBaseScale = PANEL_DESIGN_HEIGHT / worldH;
+      const panelWorldWidth = (leftWidth + rightWidth) / panelBaseScale;
+      const sceneWorldWidth = worldW + panelWorldWidth;
+      const availableWidth = Math.max(1, rect.width - margin * 2);
+      const availableHeight = Math.max(1, rect.height - margin * 2);
+      const scale = Math.max(0.001, Math.min(availableWidth / sceneWorldWidth, availableHeight / worldH));
+      const sceneWidth = sceneWorldWidth * scale;
+      const leftPanelWidth = leftWidth * scale / panelBaseScale;
+
+      view.scale = scale;
+      view.offsetX = margin + (availableWidth - sceneWidth) / 2 + leftPanelWidth;
+      view.offsetY = margin + (availableHeight - worldH * scale) / 2;
+    }
+
     function resize() {
       const rect = canvas.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
       canvas.width = Math.max(1, Math.floor(rect.width * dpr));
       canvas.height = Math.max(1, Math.floor(rect.height * dpr));
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      if (!resize.didFit && summary) {
-        const worldW = summary.size.cols * CELL;
-        const worldH = summary.size.rows * CELL;
-        view.scale = Math.min(rect.width / worldW, rect.height / worldH) * 0.94;
-        view.offsetX = (rect.width - worldW * view.scale) / 2;
-        view.offsetY = (rect.height - worldH * view.scale) / 2;
-        panelBaseScale = view.scale;
-        resize.didFit = true;
+      if (summary && viewUsesAutoFit) {
+        fitSceneToViewport(rect);
+      } else if (summary && lastViewportSize) {
+        // Preserve the same world-space center after a user has zoomed or panned.
+        view.offsetX += (rect.width - lastViewportSize.width) / 2;
+        view.offsetY += (rect.height - lastViewportSize.height) / 2;
       }
+      lastViewportSize = { width: rect.width, height: rect.height };
       updatePanelAnchors();
       drawTitleUnderline();
       draw();
@@ -1868,7 +1933,7 @@
       const mapTop = canvasRect.top - appRect.top + view.offsetY;
       const mapHeight = worldH * view.scale;
       const mapRight = mapLeft + worldW * view.scale;
-      const leftWidth = leftPanel.offsetWidth || 340;
+      const leftWidth = panelLayoutWidth(leftPanel);
       const leftX = mapLeft - leftWidth * panelScale;
       const rightX = mapRight;
       const panelLayoutHeight = mapHeight / panelScale;
@@ -2351,7 +2416,7 @@
       var rect = elementLayoutSize(canvas);
       var cssW = rect.width;
       var cssH = rect.height;
-      if (!cssW || !cssH) return;
+      if (cssW < 24 || cssH < 24) return;
 
       var dpr = window.devicePixelRatio || 1;
       var supersample = 1.5;
@@ -2427,14 +2492,14 @@
 
         // Count number
         ctx.fillStyle = "rgba(59, 36, 18, 0.82)";
-        ctx.font = '9px "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive';
+        ctx.font = `9px ${HANDWRITING_FONT}`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(count, x + w / 2, barY + barH / 2);
 
         // Label below
         ctx.fillStyle = "rgba(74, 43, 20, " + labelAlpha.toFixed(2) + ")";
-        ctx.font = '9px "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive';
+        ctx.font = `9px ${HANDWRITING_FONT}`;
         ctx.fillText(ACTIVITY_LABELS[i], x + w / 2, barY + barH + 13);
       }
 
@@ -2472,16 +2537,16 @@
     function drawOneRadar(canvas, data, keys, labels) {
       if (!canvas || !data) return;
 
+      var rect = elementLayoutSize(canvas);
+      var cssW = rect.width;
+      var cssH = rect.height;
+      if (cssW < 24 || cssH < 24) return;
+
       // Skip redraw if data unchanged
       var dataHash = keys.map(function(k) { return data[k].toFixed(3); }).join(',');
       var cacheKey = canvas.id + '|' + dataHash;
       if (canvas._radarHash === cacheKey) return;
       canvas._radarHash = cacheKey;
-
-      var rect = elementLayoutSize(canvas);
-      var cssW = rect.width;
-      var cssH = rect.height;
-      if (!cssW || !cssH) return;
 
       var dpr = window.devicePixelRatio || 1;
       var supersample = 1.5;
@@ -2576,7 +2641,7 @@
 
       // Axis labels
       ctx.fillStyle = "rgba(74, 43, 20, 0.55)";
-      ctx.font = '8px "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive';
+      ctx.font = `8px ${HANDWRITING_FONT}`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       var labelDist = R + 11;
@@ -2597,7 +2662,7 @@
       var rect = elementLayoutSize(canvas);
       var cssW = rect.width;
       var cssH = rect.height;
-      if (!cssW || !cssH) return;
+      if (cssW < 24 || cssH < 24) return;
 
       var graph = sim.social_graph;
       var nodes = graph && graph.nodes ? graph.nodes : [];
@@ -2674,7 +2739,7 @@
         socialGraphPrevLayout = null;
         socialGraphDrawn = hash;
         ctx.fillStyle = "rgba(74, 43, 20, 0.30)";
-        ctx.font = '10px "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive';
+        ctx.font = `10px ${HANDWRITING_FONT}`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText("No social ties yet", cx, cy);
@@ -3047,7 +3112,7 @@
       ctx.setLineDash([]);
 
       // ---- Bottom labels ----
-      var labelFont = '9px "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive';
+      var labelFont = `9px ${HANDWRITING_FONT}`;
       ctx.font = labelFont;
       ctx.fillStyle = "rgba(74, 43, 20, 0.52)";
       ctx.textAlign = "center";
@@ -3075,7 +3140,7 @@
         dataCtx.fillStyle = "rgba(74, 43, 20, 0.38)";
         dataCtx.textAlign = "center";
         dataCtx.textBaseline = "middle";
-        var placeholderFont = '11px "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive';
+        var placeholderFont = `11px ${HANDWRITING_FONT}`;
         dataCtx.font = placeholderFont;
         var placeX = pad.left + plotW / 2;
         var placeY = pad.top + plotH / 2;
@@ -3158,7 +3223,7 @@
       }
 
       // ---- Value labels above dots, center-aligned ----
-      var valFont = '7px "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive';
+      var valFont = `7px ${HANDWRITING_FONT}`;
       dataCtx.font = valFont;
       dataCtx.fillStyle = "rgba(74, 43, 20, 0.62)";
       dataCtx.textAlign = "center";
@@ -3315,8 +3380,8 @@
       if (!summary || !panelBaseScale || !leftPanel || !rightPanel) return null;
       const worldW = summary.size.cols * CELL;
       const worldH = summary.size.rows * CELL;
-      const leftWorldW = Math.max(1, Math.ceil((leftPanel.offsetWidth || 340) / panelBaseScale));
-      const rightWorldW = Math.max(1, Math.ceil((rightPanel.offsetWidth || 340) / panelBaseScale));
+      const leftWorldW = Math.max(1, Math.ceil(panelLayoutWidth(leftPanel) / panelBaseScale));
+      const rightWorldW = Math.max(1, Math.ceil(panelLayoutWidth(rightPanel) / panelBaseScale));
       return { worldW, worldH, leftWorldW, rightWorldW };
     }
 
@@ -3456,7 +3521,7 @@
     }
 
     function agentNameSprite(displayName) {
-      const font = '7.8px "MV Boli", "Segoe Print", "Bradley Hand ITC", "Comic Sans MS", cursive';
+      const font = `7.8px ${HANDWRITING_FONT}`;
       const key = `${font}|${displayName}`;
       const cached = agentNameSprites.get(key);
       if (cached) return cached;
@@ -4192,6 +4257,7 @@
       const beforeX = (mouseX - view.offsetX) / view.scale;
       const beforeY = (mouseY - view.offsetY) / view.scale;
       const factor = event.deltaY < 0 ? 1.14 : 0.88;
+      viewUsesAutoFit = false;
       view.scale = Math.max(0.08, Math.min(14, view.scale * factor));
       view.offsetX = mouseX - beforeX * view.scale;
       view.offsetY = mouseY - beforeY * view.scale;
@@ -4211,6 +4277,7 @@
 
     function handleMapPointerMove(event) {
       if (!view.dragging) return;
+      viewUsesAutoFit = false;
       view.offsetX += event.clientX - view.lastX;
       view.offsetY += event.clientY - view.lastY;
       view.lastX = event.clientX;
@@ -4294,6 +4361,7 @@
       draw();
     });
     window.addEventListener("resize", resize);
+    window.visualViewport?.addEventListener("resize", resize);
 
     init().catch((error) => {
       console.error(error);
