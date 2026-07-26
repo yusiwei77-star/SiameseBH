@@ -6,13 +6,20 @@
   <title>The BH-S Marauder's Map</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&amp;display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Kalam&amp;display=swap" rel="stylesheet">
   <style>
+    @font-face {
+      font-family: "SiameseBH MV Boli";
+      src: local("MV Boli"), url("/assets/fonts/mvboli.ttf") format("truetype");
+      font-weight: 400;
+      font-style: normal;
+      font-display: block;
+    }
     :root {
       --bg: #ffffff;
       --panel: rgba(10, 10, 10, 0.28);
       --side-panel-width: 340px;
-      --handwritten-font: "MV Boli", "Patrick Hand", cursive;
+      --handwritten-font: "SiameseBH MV Boli", "Kalam", cursive;
       --text: #f0ede6;
       --muted: #b0b4a8;
       --line: rgba(255, 255, 255, 0.06);
@@ -674,7 +681,7 @@
     // two 340px panels this produces a 1.8906:1 parchment sheet, matching the
     // original viewer geometry independently of viewport size and platform.
     const PANEL_DESIGN_HEIGHT = 852;
-    const HANDWRITING_FONT = '"MV Boli", "Patrick Hand", cursive';
+    const HANDWRITING_FONT = '"SiameseBH MV Boli", "Kalam", cursive';
     const agentColors = {
       base: "#3b2412",
       glow: "#6b2f1a",
@@ -977,13 +984,19 @@
     async function init() {
       metricsViewMode = "hourly";
       if (document.fonts?.load) {
+        // Preload both fonts before measuring or drawing text. Loading them in
+        // parallel keeps Kalam ready even when the primary asset is unavailable.
+        const fontLoads = await Promise.allSettled([
+          document.fonts.load('12px "SiameseBH MV Boli"'),
+          document.fonts.load('12px "Kalam"'),
+        ]);
         try {
-          // Always preload the cross-platform fallback. Windows still selects
-          // the locally installed MV Boli because it is first in the stack.
-          await document.fonts.load('12px "Patrick Hand"');
           await document.fonts.ready;
+          if (fontLoads.some((result) => result.status === "rejected")) {
+            console.warn("A handwriting font could not be loaded; using the next fallback.");
+          }
         } catch (error) {
-          console.warn("Patrick Hand could not be loaded; using cursive fallback.", error);
+          console.warn("Handwriting fonts could not be loaded; using the next fallback.", error);
         }
       }
       summary = await fetchJson("/api/summary");

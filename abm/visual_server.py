@@ -27,6 +27,7 @@ from .output import RunOutputManager, make_run_id
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8789
 VIEWER_TEMPLATE = Path(__file__).with_name("viewer_template.html")
+VIEWER_FONT = Path(__file__).with_name("assets") / "fonts" / "mvboli.ttf"
 LEGACY_VIEWER_OUTPUT = Path("debug/agent_viewer.html")
 METRIC_KEYS = (
     "energy",
@@ -335,6 +336,8 @@ class VisualHandler(BaseHTTPRequestHandler):
         try:
             if path in {"/", "/agent_viewer.html"}:
                 self._send_file(self.viewer_path, "text/html; charset=utf-8")
+            elif path == "/assets/fonts/mvboli.ttf":
+                self._send_file(VIEWER_FONT, "font/ttf")
             elif path == "/api/summary":
                 self._send_json(self.runtime.summary)
             elif path == "/api/state":
